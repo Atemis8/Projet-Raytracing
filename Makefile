@@ -23,7 +23,7 @@ SUFFIX = out
 # Getting the code in the same folders
 SRCS = $(wildcard *.cpp)
 HEAD = $(wildcard *.h)
-OBJS = $(addprefix $(OBJS_DIR)/,$(notdir $(SRCS:.c=.o)))
+OBJS = $(addprefix $(OBJS_DIR)/,$(notdir $(SRCS:.cpp=.o)))
 PCHS = $(addprefix $(HEAD_DIR)/,$(notdir $(HEAD:.h=.h.gch)))
 
 default: main
