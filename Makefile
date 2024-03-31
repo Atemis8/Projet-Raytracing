@@ -10,3 +10,5 @@ $(TARGET): $(TARGET).c
 
 clean:
 			$(RM) $(TARGET)
+
+default: all
