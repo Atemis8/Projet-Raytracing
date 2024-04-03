@@ -1,5 +1,5 @@
 CC = g++
-COPT = -O3 -Wall 
+COPT = `sdl2-config --libs --cflags` -ggdb3 -O3 -Wall -lSDL2_image -lm
 
 BUILD_DIR = build
 OBJS_DIR = $(BUILD_DIR)/objects
@@ -12,12 +12,14 @@ HEAD = $(wildcard *.h)
 
 OBJS = $(addprefix $(OBJS_DIR)/,$(notdir $(SRCS:.cpp=.o)))
 
+default: main
+
 info: $(OBJS)
 	$(info SRCS is $(SRCS))
 	$(info OBJS is $(OBJS))
 
 main: $(OBJS)
-	$(CC) -o $(OUTPUT_FILE) $(OBJS)
+	$(CC) $(COPT) -o $(OUTPUT_FILE) $(OBJS)
 
 clean:
 	rm -rf $(OBJS_DIR)

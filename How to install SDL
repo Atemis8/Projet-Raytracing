@@ -1,0 +1,10 @@
+How to install SDL :
+
+Pour installer SDL il faut avoir brew et utiliser 3 commandes :
+
+brew install SDL2
+brew install SDL2_image
+brew install SDL2_ttf
+
+
+
