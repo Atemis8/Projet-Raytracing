@@ -1,5 +1,5 @@
 CC = g++
-COPT = `sdl2-config --libs --cflags` -ggdb3 -O3 -Wall -lSDL2_image -lm
+COPT = `sdl2-config --libs --cflags` -ggdb3 -O3 -lSDL2_image -lm -w
 
 BUILD_DIR = build
 OBJS_DIR = $(BUILD_DIR)/objects
@@ -20,6 +20,7 @@ info: $(OBJS)
 
 main: $(OBJS)
 	$(CC) $(COPT) -o $(OUTPUT_FILE) $(OBJS)
+	./main
 
 clean:
 	rm -rf $(OBJS_DIR)

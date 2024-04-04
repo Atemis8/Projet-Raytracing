@@ -1,47 +1,57 @@
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_timer.h>
+#include <iostream>
+#include <unordered_map>
+      
+#include "main.hpp"
+#include "vector.hpp"
+#include "structs.hpp"
+#include "frame.hpp"
 
-int main(int argc, char *argv[])
-{
+using namespace std;
 
-	// returns zero on success else non-zero
-	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
-		printf("error initializing SDL: %s\n", SDL_GetError());
-	}
+static int id = 0;
+static unordered_map<int, Material> matmap;
+Material material(float relp, float cond, float thck) {
+	const Material m = {.id = id, .relp = relp, .cond=cond, .thck=thck, .perm=std::complex<float>(relp, -cond / FREQ)};
+    matmap[id] = m; ++id;
+    return m;
+};
 
-  // Creates a window
-	SDL_Window* win = SDL_CreateWindow("Raytracing", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1000, 1000, 0);
-	Uint32 render_flags = SDL_RENDERER_ACCELERATED;
-	SDL_Renderer* rend = SDL_CreateRenderer(win, -1, render_flags);
+static forward_list<Wall> walls;
+Wall* addWall(Material mat, PosVector v1, PosVector v2) {
+    Wall w = {.mat = mat, .v1 = v1, .v2 = v2};
+    walls.push_front(w);
+    return &w;
+}
 
-	int close = 0;
-	while (!close) {
+const Material test = material(4.8, 0.018, 0.15);
+const Material brick = material(3.95, 0.073, 0.1); // Pas d'infos sur les briques dans notre simulation
+const Material concr = material(6.4954, 1.43, 0.3);
+const Material wallm = material(2.7, 0.05346, 0.1);
+const Material glass = material(6.3919, 0.00107, 0.05);
+const Material metal = material(1, 1E7, 0.05);
 
-    // Events management
-		SDL_Event event;
-		while (SDL_PollEvent(&event)) {
-			switch (event.type) {
+void initColorMap(unordered_map<int, int> *m) { 
+	m->insert(pair<int, int>(brick.id, 0xFF0000));
+	m->insert(pair<int, int>(concr.id, 0x808080));
+	m->insert(pair<int, int>(wallm.id, 0xFFA500));
+	m->insert(pair<int, int>(glass.id, 0xFFFFFF));
+	m->insert(pair<int, int>(metal.id, 0xd3d3d3));
+}
 
-        // handling of close button
-        case SDL_QUIT:
-          close = 1;
-          break;
-			}
-		}
-    // Renders Background
-    SDL_SetRenderDrawColor(rend, 0, 0, 0, 255);
-    SDL_RenderClear(rend); 
+void initWalls() {
+	addWall(concr, PosVector(0, 0), PosVector(0, 80));
+	addWall(concr, PosVector(0, 20), PosVector(100, 20));
+	addWall(concr, PosVector(0, 80), PosVector(100, 80));
+}
 
-    SDL_SetRenderDrawColor(rend, 255, 255, 255, 255);
-    SDL_RenderDrawLine(rend, 100, 100, 500, 100);
-		SDL_RenderPresent(rend); // triggers the double buffers for multiple rendering
-		SDL_Delay(1000 / 60); // calculates to 60 fps
-	}
-	
-	SDL_DestroyRenderer(rend); // destroy renderer
-	SDL_DestroyWindow(win); // destroy window
-	SDL_Quit(); // close SDL
+int main(int argc, char *argv[]) {
+	unordered_map<int, int> colorMap;
+	initColorMap(&colorMap);
+	initWalls();
 
+	cout << "Permitivité : " << metal.perm << endl;
+
+	frame(&colorMap, &walls);
 	return 0;
 }
+
