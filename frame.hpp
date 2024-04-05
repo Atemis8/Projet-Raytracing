@@ -6,4 +6,6 @@
 #include <forward_list>
 #include "structs.hpp"
 
-int frame(std::unordered_map<int, int> *colors, std::forward_list<Wall> *walls);
+int frame(std::unordered_map<int, int> *colors, 
+            std::forward_list<Wall> *walls,
+            std::forward_list<Ray> *rays);

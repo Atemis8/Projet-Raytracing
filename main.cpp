@@ -5,6 +5,7 @@
 #include "vector.hpp"
 #include "structs.hpp"
 #include "frame.hpp"
+#include "raytracer.hpp"
 
 using namespace std;
 
@@ -18,7 +19,8 @@ Material material(float relp, float cond, float thck) {
 
 static forward_list<Wall> walls;
 Wall* addWall(Material mat, PosVector v1, PosVector v2) {
-    Wall w = {.mat = mat, .v1 = v1, .v2 = v2};
+	PosVector v = v2 - v1;
+    Wall w = {.mat = mat, .v1 = v1, .v2 = v2, .v = v, .n = v.normal(), .size = v.getNorm()};
     walls.push_front(w);
     return &w;
 }
@@ -39,19 +41,19 @@ void initColorMap(unordered_map<int, int> *m) {
 }
 
 void initWalls() {
-	addWall(concr, PosVector(0, 0), PosVector(0, 80));
-	addWall(concr, PosVector(0, 20), PosVector(100, 20));
-	addWall(concr, PosVector(0, 80), PosVector(100, 80));
+	addWall(concr, PosVector(0.0F, 0.0F), PosVector(0.0F, 80.0F));
+	addWall(concr, PosVector(0.0F, 20.0F), PosVector(100.0F, 20.0F));
+	addWall(concr, PosVector(0.0F, 80.0F), PosVector(100.0F, 80.0F));
 }
 
 int main(int argc, char *argv[]) {
 	unordered_map<int, int> colorMap;
 	initColorMap(&colorMap);
+	cout << "Init Walls : " << endl;
 	initWalls();
+	forward_list<Ray> rays = traceRays(PosVector(32.0F, 10.0F), PosVector(47.0F, 65.0F), &walls);
 
-	cout << "Permitivité : " << metal.perm << endl;
-
-	frame(&colorMap, &walls);
+	frame(&colorMap, &walls, &rays);
 	return 0;
 }
 

@@ -3,11 +3,11 @@
 #include <iostream>
 #include <typeinfo>
 
-#define SIZEX 500
-#define SIZEY 500
+#define SIZEX 500.0F
+#define SIZEY 500.0F
 
-#define ORIGINX 50
-#define ORIGINY 50
+#define ORIGINX 100.0F
+#define ORIGINY 100.0F
 
 #define SCALE 4
 
@@ -24,13 +24,15 @@ PosVector setAxis(PosVector *v) {
 }
 
 void drawLine(SDL_Renderer* rend, PosVector *v1, PosVector *v2) {
-	PosVector v3 = setAxis(v1);
-	PosVector v4 = setAxis(v2);
+	const PosVector v3 = setAxis(v1);
+	const PosVector v4 = setAxis(v2);
 	SDL_RenderDrawLine(rend, v3.getX(), v3.getY(), v4.getX(), v4.getY());
 }
 
 
-int frame(std::unordered_map<int, int> *colors, std::forward_list<Wall> *walls) {
+int frame(std::unordered_map<int, int> *colors, 
+			std::forward_list<Wall> *walls, 
+			std::forward_list<Ray> *rays) {
 	// returns zero on success else non-zero
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
 		printf("error initializing SDL: %s\n", SDL_GetError());
@@ -47,6 +49,17 @@ int frame(std::unordered_map<int, int> *colors, std::forward_list<Wall> *walls) 
 	for(Wall w : *walls) {
 		setColor(rend, colors->at(w.mat.id));
 		drawLine(rend, &w.v1, &w.v2);
+	}
+
+	setColor(rend, 0xFF0000);
+
+	PosVector *temp = (PosVector*) malloc(sizeof(PosVector)); 
+	for(Ray& r : *rays) {
+		int i = 1;
+		for(PosVector& v : r.points) { 
+			if(i) { temp = &v; i = 0; continue; }
+		 	drawLine(rend, temp, &v); temp = &v;
+		}
 	}
 
     SDL_RenderPresent(rend);

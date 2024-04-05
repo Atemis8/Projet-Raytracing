@@ -18,7 +18,14 @@ typedef struct _Wall {
     Material mat;
     PosVector v1;
     PosVector v2;
+    const float size;
+    const PosVector v;
+    PosVector n;
 } Wall;
+
+typedef struct _Ray {
+    std::forward_list<PosVector> points;
+} Ray;
 
 #define utilitystructs 
 #endif
