@@ -25,6 +25,8 @@ typedef struct _Wall {
 
 typedef struct _Ray {
     std::forward_list<PosVector> points;
+    float distsq;
+    int color;
 } Ray;
 
 #define utilitystructs 

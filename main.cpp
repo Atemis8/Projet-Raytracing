@@ -1,5 +1,7 @@
 #include <iostream>
 #include <unordered_map>
+#include <cstdlib>
+#include <time.h> 
       
 #include "main.hpp"
 #include "vector.hpp"
@@ -33,27 +35,32 @@ const Material glass = material(6.3919, 0.00107, 0.05);
 const Material metal = material(1, 1E7, 0.05);
 
 void initColorMap(unordered_map<int, int> *m) { 
-	m->insert(pair<int, int>(brick.id, 0xFF0000));
-	m->insert(pair<int, int>(concr.id, 0x808080));
-	m->insert(pair<int, int>(wallm.id, 0xFFA500));
-	m->insert(pair<int, int>(glass.id, 0xFFFFFF));
-	m->insert(pair<int, int>(metal.id, 0xd3d3d3));
+	m->insert(pair<int, int>(brick.id, 0xFF0000FF));
+	m->insert(pair<int, int>(concr.id, 0x808080FF));
+	m->insert(pair<int, int>(wallm.id, 0xFFA500FF));
+	m->insert(pair<int, int>(glass.id, 0xFFFFFFFF));
+	m->insert(pair<int, int>(metal.id, 0xd3d3d3FF));
 }
 
 void initWalls() {
 	addWall(concr, PosVector(0.0F, 0.0F), PosVector(0.0F, 80.0F));
-	addWall(concr, PosVector(0.0F, 20.0F), PosVector(100.0F, 20.0F));
-	addWall(concr, PosVector(0.0F, 80.0F), PosVector(100.0F, 80.0F));
+	addWall(wallm, PosVector(0.0F, 20.0F), PosVector(100.0F, 20.0F));
+	addWall(glass, PosVector(0.0F, 80.0F), PosVector(100.0F, 80.0F));
 }
 
 int main(int argc, char *argv[]) {
+	srand(time(NULL));
+
 	unordered_map<int, int> colorMap;
 	initColorMap(&colorMap);
-	cout << "Init Walls : " << endl;
 	initWalls();
-	forward_list<Ray> rays = traceRays(PosVector(32.0F, 10.0F), PosVector(47.0F, 65.0F), &walls);
+	forward_list<PosVector> debug_points;
+	forward_list<Ray> rays = traceRays(PosVector(32.0F, 10.0F), PosVector(47.0F, 65.0F), &walls, &debug_points);
 
-	frame(&colorMap, &walls, &rays);
+	PosVector v1 = PosVector(10, 20);
+	PosVector v2 = PosVector(30, 40);
+
+	frame(&colorMap, &walls, &rays, &debug_points);
 	return 0;
 }
 
