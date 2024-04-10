@@ -1,7 +1,11 @@
 #include "frame.hpp"
 #include "structs.hpp"
+#include "imguitest.hpp"
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_timer.h>
 #include <iostream>
-#include <typeinfo>
+
 
 #define SIZEX 600.0F
 #define SIZEY 600.0F
@@ -53,6 +57,8 @@ int frame(std::unordered_map<int, int> *colors,
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
 		printf("error initializing SDL: %s\n", SDL_GetError());
 	}
+
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
 
 	// Creates a window
 	SDL_Window* win = SDL_CreateWindow("Raytracing", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SIZEX, SIZEY, 0);

@@ -8,6 +8,7 @@
 #include "structs.hpp"
 #include "frame.hpp"
 #include "raytracer.hpp"
+#include "imguitest.hpp"
 
 using namespace std;
 
@@ -57,10 +58,25 @@ int main(int argc, char *argv[]) {
 	forward_list<PosVector> debug_points;
 	forward_list<Ray> rays = traceRays(PosVector(32.0F, 10.0F), PosVector(47.0F, 65.0F), &walls, &debug_points);
 
-	PosVector v1 = PosVector(10, 20);
-	PosVector v2 = PosVector(30, 40);
-
-	frame(&colorMap, &walls, &rays, &debug_points);
+	imgui_test();
+	// frame(&colorMap, &walls, &rays, &debug_points);
 	return 0;
 }
 
+/*
+forward_list<int> list1;
+forward_list<int> list2;
+
+list1.push_front(2);
+list1.push_front(1);
+
+list2.push_front(4);
+list2.push_front(3);
+
+list2.splice_after(list2.before_begin(), list1);
+
+cout << "List 1 : " << endl;
+for(int i : list1) cout << i << endl;
+cout << "List 2 : " << endl;
+for(int i : list2) cout << i << endl;
+*/
