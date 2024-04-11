@@ -66,6 +66,7 @@ int main(int argc, char *argv[]) {
 	forward_list<PosVector> list1;
 	list1.push_front(PosVector(10, 10));
 	list1.push_front(PosVector(20, 10));
+	list1.push_front(PosVector(30, 10));
 
 	unordered_map<int, int> colorMap;
 	initColorMap(&colorMap);
@@ -74,7 +75,7 @@ int main(int argc, char *argv[]) {
 	RaytracerResult result;
 	RaytracerOptions options = {&colorMap, 0, 1, 1};
 	
-	solveProblem(&result, 2);
+	solveProblem(&result, 3);
 	imgui_test(&result, &options);
 	return 0;
 }

@@ -52,14 +52,9 @@ ImVec2 setAxis(PosVector *v) {
 //AddPolyline(const ImVec2* points, int num_points, ImU32 col, ImDrawFlags flags, float thickness);
 
 void drawRay(Ray *r, ImDrawList* draw_list, int nb) {
-    ImVec2* points = (ImVec2*) malloc(sizeof(ImVec2) * nb);
-    int i = 0;
-    for(PosVector p : r->points) {
-        points[i] = setAxis(&p);
-        ++i;
-    }
-    draw_list->AddPolyline(points, nb, getColor(r->color), 0, 1);
-    free(points);
+    auto p = r->points.begin();
+    for(int i = 0; i < nb - 1; ++i)
+        draw_list->AddLine(setAxis(&(*p)), setAxis(&(*++p)), getColor(r->color));
 }
 
 void drawRaytracer(RaytracerResult *result, RaytracerOptions *options) {

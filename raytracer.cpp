@@ -45,10 +45,13 @@ void test(forward_list<Wall> *walls, Wall *w, PosVector *r, PosVector *t, forwar
             forward_list<Ray> ur;
             test(walls, &v, r, &tx, &ur, dpts, refl - 1);
             if(ur.empty()) continue;
-            for(Ray &r : ur) {
+            auto before = ur.before_begin();
+            for(auto r = ur.begin(); r != ur.end();) {
                 PosVector *p3 = (PosVector*) malloc(sizeof(PosVector));
-                if(intersection(p3, &(r.points.front()), &tx, w)) continue;
-                r.points.push_front(*p3);
+                if(intersection(p3, &(r->points.front()), &tx, w)) { r = ur.erase_after(before); continue; }
+                r->points.push_front(*p3);
+                before = r;
+                ++r;
             }
             wrays->splice_after(wrays->before_begin(), ur);
         }

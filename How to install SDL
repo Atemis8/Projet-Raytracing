@@ -6,5 +6,5 @@ brew install SDL2
 brew install SDL2_image
 brew install SDL2_ttf
 
-
+Pour ce qui est de ImGui normalement il n'y a rien de plus à faire
 
