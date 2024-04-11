@@ -24,33 +24,35 @@ bool intersection(PosVector *out, PosVector *rx, PosVector *tx, Wall *w) {
     return 0;
 }
 
-PosVector* test(forward_list<Wall> *walls, Wall *w, PosVector *r, PosVector *t, forward_list<Ray> *rays, forward_list<Ray> *wrays, forward_list<PosVector> *dpts, int refl) {
-    if(((*r - w->v1) * w->n) * ((*t - w->v1) * w->n) < 0) return NULL;
+void test(forward_list<Wall> *walls, Wall *w, PosVector *r, PosVector *t, forward_list<Ray> *wrays, forward_list<PosVector> *dpts, int refl) {
+    if(((*r - w->v1) * w->n) * ((*t - w->v1) * w->n) < 0) return;
 
     PosVector tx = getImage(w, t);
+    dpts->push_front(tx);
     PosVector *p1 = (PosVector*) malloc(sizeof(PosVector));
-    if(intersection(p1, r, &tx, w)) return NULL;
+    if(intersection(p1, r, &tx, w)) return;
 
     forward_list<PosVector> pts;
-    Ray ray = {.points = pts, .distsq = (*r - tx).getNorm(), .color = rand() + MINCOLOR};
+    Ray ray = {.points = pts, .distsq = (*r - tx).getNorm(), .color = static_cast<int>(0xFF0000FF)};
     ray.points.push_front(*r);
     ray.points.push_front(*p1);
-    rays->push_front(ray);
+
+    wrays->push_front(ray);
     
     if(refl > 1)
         for(Wall v : *walls) {
             if((v.v1 == w->v1) && (v.v2 == w->v2)) continue;
-            PosVector *p2 = test(walls, &v, r, &tx, rays, NULL, dpts, refl - 1);
-            PosVector *p3 = (PosVector*) malloc(sizeof(PosVector));
-            if(p2 == NULL || intersection(p3, p2, &tx, w)) continue;
-            free(p3); free(p2);
+            forward_list<Ray> ur;
+            test(walls, &v, r, &tx, &ur, dpts, refl - 1);
+            if(ur.empty()) continue;
+            for(Ray &r : ur) {
+                PosVector *p3 = (PosVector*) malloc(sizeof(PosVector));
+                if(intersection(p3, &(r.points.front()), &tx, w)) continue;
+                r.points.push_front(*p3);
+            }
+            wrays->splice_after(wrays->before_begin(), ur);
         }
-    return p1;
 }
-
-
-
-
 
 // Pour chaque point image si il faut calculer plus de réflexion 
 // il faut les donner comme émetteurs ensuite il faut poser limiter les intersections
@@ -59,65 +61,17 @@ PosVector* test(forward_list<Wall> *walls, Wall *w, PosVector *r, PosVector *t, 
 // Problème sur la distance parcourue
 // Pour chaque TX on a 2 cas : murs et pas murs, cas mur uniquement si on a refl > 0
 
-forward_list<Ray> traceRays(PosVector emitter, PosVector receiver, forward_list<Wall> *walls, forward_list<PosVector> *dpts) {
-    forward_list<Ray> rays;
-    
-
-    for(Wall w : *walls) {
-        test(walls, &w, &receiver, &emitter, &rays, NULL, dpts, 2);
+void traceRays(RaytracerResult *res) {
+    forward_list<PosVector> directPath;
+    directPath.push_front(*(res->receiver));
+    Ray r = {directPath, (*(res->receiver) - *(res->emitter)).getNorm(), static_cast<int>(0xFF0000FF)};
+    res->rays->push_front(r);
+    for(Wall w : *(res->walls)) {
+        forward_list<Ray> t;
+        test(res->walls, &w, res->receiver, res->emitter, &t, res->debug_points, res->reflections);
+        (res->rays)->splice_after((res->rays)->before_begin(), t);
     }
-    return rays;
-
-    std::cout << std::endl << "Old Version : " << std::endl;
-
-    // Direct Path
-    forward_list<PosVector> points;
-    points.push_front(emitter);
-    points.push_front(receiver);
-    Ray directPath = {.points = points, .distsq = (emitter - receiver).getNorm()};
-    rays.push_front(directPath);
-
-    for(Wall w : *walls) {
-        // Vérifie si le point image et physique et le calcule
-        if(((receiver - w.v1) * w.n) * ((emitter - w.v1) * w.n) < 0) continue;
-        
-        PosVector tx = getImage(&w, &emitter);
-        dpts->push_front(tx);
-
-        PosVector * p1 = (PosVector*) malloc(sizeof(PosVector));
-        if(intersection(p1, &receiver, &tx, &w)) continue;
-
-        forward_list<PosVector> point;
-        Ray r1 = {.points = point, .distsq = 0, .color = rand() + MINCOLOR};
-
-        r1.points.push_front(emitter);
-        r1.points.push_front(*p1);
-        r1.points.push_front(receiver);
-        rays.push_front(r1);
-
-        for(Wall v: *walls) {
-            if((w.v1 == v.v1) && (w.v2 == v.v2)) continue;
-            if(((receiver - v.v1) * v.n) * ((tx - v.v1) * v.n) < 0) continue;
-
-            PosVector txp = getImage(&v, &tx);
-            dpts->push_front(txp);
-            
-            PosVector * p2 = (PosVector*) malloc(sizeof(PosVector));
-            PosVector * p3 = (PosVector*) malloc(sizeof(PosVector));
-            if(intersection(p2, &receiver, &txp, &v)) continue;   
-            if(intersection(p3, p2, &tx, &w)) continue;
-
-            forward_list<PosVector> points;
-            Ray r = {.points = points, .distsq = 0, .color = rand() + MINCOLOR};
-
-            r.points.push_front(receiver);
-            r.points.push_front(*p2);
-            r.points.push_front(*p3);
-            r.points.push_front(emitter);
-            rays.push_front(r);
-            // std::cout << "Reflection tier 2" << " Vecteur : "; txp.print();
-        }
+    for(Ray &r : *(res->rays)) {
+        r.points.push_front(*(res->emitter));
     }
-
-    return rays;
 }

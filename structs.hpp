@@ -1,10 +1,13 @@
 #include <complex>
 #include <forward_list>
+#include <unordered_map>
 #include "vector.hpp"
 
 #define FREQ 60E9
 
 #ifndef utilitystructs
+
+using namespace std;
 
 typedef struct _Material {
     float relp;
@@ -28,6 +31,22 @@ typedef struct _Ray {
     float distsq;
     int color;
 } Ray;
+
+typedef struct _RaytracerResult {
+    PosVector *emitter;
+    PosVector *receiver;
+    forward_list<Wall> *walls;
+    forward_list<PosVector> *debug_points;
+    forward_list<Ray> *rays;
+    int reflections;
+} RaytracerResult;
+
+typedef struct _RaytracerOptions {
+    unordered_map<int, int> *colors;
+    int nbReflections;
+    bool selectReflection;
+    bool show_debug;
+} RaytracerOptions;
 
 #define utilitystructs 
 #endif

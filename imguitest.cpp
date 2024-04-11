@@ -10,20 +10,85 @@
 #include "imgui/imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_opengl3.h"
+#include "imguistyle.hpp"
 #include <stdio.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_opengl.h>
 
-// This example can also compile and run with Emscripten! See 'Makefile.emscripten' for details.
-#ifdef __EMSCRIPTEN__
-#include "../libs/emscripten/emscripten_mainloop_stub.h"
-#endif
+#include <unordered_map>
+#include <forward_list>
+#include <iostream>
+#include "structs.hpp"
+#include "main.hpp"
+
+#define RED 0xFF0000FF
+#define GREEN 0x00FF00FF
+#define BLUE 0x0000FFFF
+
+// Percent of the size as the origin point
+static float ORIGINX = 0.1F;
+static float ORIGINY = 0.1F;
+static float SCALE = 4.0f;
+
+#define POINT_SCALE 4.0f
+
+ImU32 getColor(int color) {
+    const int red = (color & 0xFF000000) >> 24;
+	const int green = (color & 0x00FF0000) >> 16;
+	const int blue = (color & 0x0000FF00) >> 8;
+	const int alpha = (color & 0x000000FF);
+    return IM_COL32(red, green, blue, alpha);
+}
+
+
+static ImVec2 size;
+static ImVec2 cursor;
+ImVec2 setAxis(PosVector *v) {
+	return ImVec2(ORIGINX * size.x +  v->getX() * SCALE + cursor.x, size.y * (1 - ORIGINY) - v->getY() * SCALE + cursor.y);
+}
+
+//AddPolyline(const ImVec2* points, int num_points, ImU32 col, ImDrawFlags flags, float thickness);
+
+void drawRay(Ray *r, ImDrawList* draw_list, int nb) {
+    ImVec2* points = (ImVec2*) malloc(sizeof(ImVec2) * nb);
+    int i = 0;
+    for(PosVector p : r->points) {
+        points[i] = setAxis(&p);
+        ++i;
+    }
+    draw_list->AddPolyline(points, nb, getColor(r->color), 0, 1);
+    free(points);
+}
+
+void drawRaytracer(RaytracerResult *result, RaytracerOptions *options) {
+    ImGui::Begin("Raytracer");
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    cursor = ImGui::GetCursorScreenPos();
+    size = ImGui::GetWindowSize();
+
+    draw_list->AddCircleFilled(setAxis(result->emitter), POINT_SCALE, getColor(GREEN));
+    draw_list->AddCircleFilled(setAxis(result->receiver), POINT_SCALE, getColor(GREEN));
+
+    for(Ray &r : *(result->rays)) {
+        int nb = distance(r.points.begin(), r.points.end());
+        if(options->selectReflection && (options->nbReflections + 2 != nb)) continue;
+        drawRay(&r, draw_list, nb);
+    }
+    for(Wall w : *(result->walls)) 
+        draw_list->AddLine(setAxis(&w.v1), setAxis(&w.v2), options->colors->at(w.mat.id), 2);
+    
+    if(options->show_debug)
+    for(PosVector v : *(result->debug_points))
+        draw_list->AddCircleFilled(setAxis(&v), POINT_SCALE, getColor(RED));
+
+    ImGui::Dummy(ImVec2(500, 500));
+    ImGui::End();
+}
 
 // Main code
-int imgui_test()
-{
+int imgui_test(RaytracerResult *result, RaytracerOptions *options) {
     // Setup SDL
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0)
     {
@@ -80,58 +145,33 @@ int imgui_test()
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.Fonts->AddFontFromFileTTF("verdana.ttf", 18.0f, NULL, NULL);
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
     // Setup Dear ImGui style
+    // setImGuiStyle();
     ImGui::StyleColorsDark();
-    //ImGui::StyleColorsLight();
+    // ImGui::StyleColorsLight();
 
     // Setup Platform/Renderer backends
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    // Load Fonts
-    // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
-    // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
-    // - If the file cannot be loaded, the function will return a nullptr. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
-    // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
-    // - Use '#define IMGUI_ENABLE_FREETYPE' in your imconfig file to use Freetype for higher quality font rendering.
-    // - Read 'docs/FONTS.md' for more instructions and details.
-    // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
-    // - Our Emscripten build process allows embedding fonts to be accessible at runtime from the "fonts/" folder. See Makefile.emscripten for details.
-    //io.Fonts->AddFontDefault();
-    //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf", 18.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
-    //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
-    //IM_ASSERT(font != nullptr);
-
     // Our state
-    bool show_demo_window = true;
-    bool show_another_window = false;
+    bool show_demo_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // Main loop
     bool done = false;
-#ifdef __EMSCRIPTEN__
-    // For an Emscripten build we are disabling file-system access, so let's not attempt to do a fopen() of the imgui.ini file.
-    // You may manually call LoadIniSettingsFromMemory() to load settings from your own storage.
-    io.IniFilename = nullptr;
-    EMSCRIPTEN_MAINLOOP_BEGIN
-#else
-    while (!done)
-#endif
-    {
+    while (!done) {
         // Poll and handle events (inputs, window resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
         // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
         // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
         SDL_Event event;
-        while (SDL_PollEvent(&event))
-        {
+        while (SDL_PollEvent(&event)) {
             ImGui_ImplSDL2_ProcessEvent(&event);
             if (event.type == SDL_QUIT)
                 done = true;
@@ -150,20 +190,31 @@ int imgui_test()
 
         // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
         {
-            static float f = 0.0f;
+            
             static int counter = 0;
+            static int ref_option = 1;
 
-            ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+            ImGui::Begin("Options");  
+            ImGui::Text("Create a new Raytracing problem :"); 
+            ImGui::InputInt("Reflections", &ref_option);
+            if(ref_option < 1) ref_option = 1;
+            if(ImGui::Button("Start Simulation")) {
+                solveProblem(result, ref_option);
+            }      
+            
+            ImGui::Text("Current Simulation Options : ");
+            ImGui::Checkbox("Select Reflection", &(options->selectReflection));
+            if(options->selectReflection)
+                ImGui::SliderInt("Reflections", &(options->nbReflections), 0.0f, result->reflections);    // Edit 1 float using a slider from 0.0f to 1.0f
+            ImGui::Checkbox("Show Debug Points", &(options->show_debug));
+            ImGui::SliderFloat("Origin X", &ORIGINX, 0.0f, 1.0f);
+            ImGui::SliderFloat("Origin Y", &ORIGINY, 0.0f, 1.0f);
+            ImGui::SliderFloat("Scale", &SCALE, 1.0f, 10.0f);
 
-            ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-            ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-            ImGui::Checkbox("Another Window", &show_another_window);
-
-            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+            ImGui::Checkbox("Demo Window", &show_demo_window);
             ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
 
-            if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-                counter++;
+            if (ImGui::Button("Button")) counter++;                 // Buttons return true when clicked (most widgets return true when edited/activated) 
             ImGui::SameLine();
             ImGui::Text("counter = %d", counter);
 
@@ -171,15 +222,7 @@ int imgui_test()
             ImGui::End();
         }
 
-        // 3. Show another simple window.
-        if (show_another_window)
-        {
-            ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-            ImGui::Text("Hello from another window!");
-            if (ImGui::Button("Close Me"))
-                show_another_window = false;
-            ImGui::End();
-        }
+        drawRaytracer(result, options);
 
         // Rendering
         ImGui::Render();
@@ -189,9 +232,6 @@ int imgui_test()
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         SDL_GL_SwapWindow(window);
     }
-#ifdef __EMSCRIPTEN__
-    EMSCRIPTEN_MAINLOOP_END;
-#endif
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();

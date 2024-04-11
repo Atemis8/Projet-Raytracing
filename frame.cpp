@@ -31,18 +31,19 @@ void setColor(SDL_Renderer* rend, int color) {
 	SDL_SetRenderDrawColor(rend, red, green, blue, alpha);
 }
 
+/*
 PosVector setAxis(PosVector *v) {
 	return PosVector(ORIGINX +  v->getX() * SCALE, SIZEY - ORIGINY - v->getY() * SCALE);
-}
+}*/
 
 void drawLine(SDL_Renderer* rend, PosVector *v1, PosVector *v2) {
-	const PosVector v3 = setAxis(v1);
-	const PosVector v4 = setAxis(v2);
+	const PosVector v3 = PosVector(0, 0);
+	const PosVector v4 = PosVector(0, 0);
 	SDL_RenderDrawLine(rend, v3.getX(), v3.getY(), v4.getX(), v4.getY());
 }
 
 void drawPoint(SDL_Renderer* rend, PosVector *p) {
-	const PosVector pa = setAxis(p);
+	const PosVector pa = PosVector(0, 0);
 	SDL_RenderSetScale(rend, SCALE_POINT, SCALE_POINT);
 	SDL_RenderDrawPoint(rend, pa.getX() / SCALE_POINT, pa.getY() / SCALE_POINT);
 	SDL_RenderSetScale(rend, 1.0, 1.0);

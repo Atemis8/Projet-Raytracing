@@ -21,7 +21,7 @@ COPT += -I /usr/local/opt/glfws
 COPT += -std=c++11 -I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends
 COPT += -I/usr/local/include -I/opt/local/include
 
-LIBS = -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo -lglfw3
+LIBS = -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo 
 
 default: main
 
