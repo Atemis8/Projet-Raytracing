@@ -9,33 +9,38 @@
 #include "frame.hpp"
 #include "raytracer.hpp"
 #include "imguitest.hpp"
+#include "saving.hpp"
 
 using namespace std;
 
-static int id = 0;
-static unordered_map<int, Material> matmap;
-Material material(float relp, float cond, float thck) {
-	const Material m = {.id = id, .relp = relp, .cond=cond, .thck=thck, .perm=std::complex<float>(relp, -cond / FREQ)};
-    matmap[id] = m; ++id;
+static int mat_id = 0;
+static unordered_map<int, Material> matmap; // Maybe changing it to froward list
+static complex<float> mu0 = complex<float>(MU0, 0);
+Material material(string name, float epsr, float cond, float thck) {
+	complex<float> perm = complex<float>(epsr * EPSILON0, -cond / (FREQ * 2 * PI));
+	const Material m = {.id = mat_id, .epsr = epsr, .cond=cond, .thck=thck, .perm=perm, .imped=sqrt(mu0 / perm), .name = name};
+    matmap[mat_id] = m; 
+	++mat_id;
     return m;
-};
-
-static forward_list<Wall> walls;
-Wall* addWall(Material mat, PosVector v1, PosVector v2) {
-	PosVector v = v2 - v1;
-    Wall w = {.mat = mat, .v1 = v1, .v2 = v2, .v = v, .n = v.normal(), .size = v.getNorm()};
-    walls.push_front(w);
-    return &w;
 }
 
-const Material test = material(4.8, 0.018, 0.15);
-const Material brick = material(3.95, 0.073, 0.1); // Pas d'infos sur les briques dans notre simulation
-const Material concr = material(6.4954, 1.43, 0.3);
-const Material wallm = material(2.7, 0.05346, 0.1);
-const Material glass = material(6.3919, 0.00107, 0.05);
-const Material metal = material(1, 1E7, 0.05);
+static vector<Wall> walls;
+void addWall(Material mat, PosVector v1, PosVector v2) {
+	PosVector v = v2 - v1;
+	float size = sqrt(v.getNorm());
+    Wall w = {.mat = mat, .v1 = v1, .v2 = v2, .v = v, .n = (v.normal()) / size, .size = (size)};
+	walls.push_back(w);
+}
+
+const Material test = material("Test", 4.8, 0.018, 0.15);
+const Material brick = material("Brick", 3.95, 0.073, 0.1); // Pas d'infos sur les briques dans notre simulation
+const Material concr = material("Concrete", 6.4954, 1.43, 0.3);
+const Material wallm = material("Partition", 2.7, 0.05346, 0.1);
+const Material glass = material("Glass", 6.3919, 0.00107, 0.05);
+const Material metal = material("Metal", 1, 1E7, 0.05);
 
 void initColorMap(unordered_map<int, int> *m) { 
+	m->insert(pair<int, int>(test.id, 0xFF0F0FFF));
 	m->insert(pair<int, int>(brick.id, 0xFF0000FF));
 	m->insert(pair<int, int>(concr.id, 0x808080FF));
 	m->insert(pair<int, int>(wallm.id, 0xFFA500FF));
@@ -43,22 +48,22 @@ void initColorMap(unordered_map<int, int> *m) {
 	m->insert(pair<int, int>(metal.id, 0xd3d3d3FF));
 }
 
-void initWalls() {
-	addWall(concr, PosVector(0.0F, 0.0F), PosVector(0.0F, 80.0F));
-	addWall(wallm, PosVector(0.0F, 20.0F), PosVector(100.0F, 20.0F));
-	addWall(glass, PosVector(0.0F, 80.0F), PosVector(100.0F, 80.0F));
-}
-
 static PosVector emitter = PosVector(32.0F, 10.0F);
 static PosVector receiver = PosVector(47.0F, 65.0F);
 static forward_list<PosVector> debug_points;
 static forward_list<Ray> rays;
-void solveProblem(RaytracerResult *res, int reflections) {
+void solveProblem(RaytracerResult *res, forward_list<PosVector> *emitters, int reflections) {
 	rays.clear();
 	debug_points.clear();
-	*(res) = {&emitter, &receiver, &walls, &debug_points, &rays, reflections};
-	traceRays(res);
+	time_t time1 = time(NULL);
+	for(PosVector v : *emitters) {
+		*(res) = {&v, &receiver, &walls, &debug_points, &rays, reflections};
+		traceRays(res);
+	}
+	time_t time2 = time(NULL);
+	cout << ((float) (time2 - time1)) << "ms" << endl;
 }
+
 
 int main(int argc, char *argv[]) {
 	srand(time(NULL));
@@ -67,35 +72,24 @@ int main(int argc, char *argv[]) {
 	list1.push_front(PosVector(10, 10));
 	list1.push_front(PosVector(20, 10));
 	list1.push_front(PosVector(30, 10));
-
+	
 	unordered_map<int, int> colorMap;
 	initColorMap(&colorMap);
-	initWalls();
+
+	forward_list<PosVector> emitters;
+	load_problem(&emitters, &matmap);
 
 	RaytracerResult result;
-	RaytracerOptions options = {&colorMap, 0, 1, 1};
-	
-	solveProblem(&result, 3);
+	RaytracerOptions options;
+	setDefaultOptions(&options, &colorMap, &matmap, mat_id, emitters);
+
+	solveProblem(&result, &options.emitters, 3);
 	imgui_test(&result, &options);
 	return 0;
 }
 
-
-
 /*
-forward_list<int> list1;
-forward_list<int> list2;
-
-list1.push_front(2);
-list1.push_front(1);
-
-list2.push_front(4);
-list2.push_front(3);
-
-list2.splice_after(list2.before_begin(), list1);
-
-cout << "List 1 : " << endl;
-for(int i : list1) cout << i << endl;
-cout << "List 2 : " << endl;
-for(int i : list2) cout << i << endl;
+for(Wall w : walls) w.n.print();
+for(int i = 0; i < mat_id; ++i)
+	cout << matmap[i].name << " : " << matmap[i].imped << endl;
 */

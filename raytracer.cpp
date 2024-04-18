@@ -8,23 +8,34 @@
 using namespace std;
 
 PosVector getImage(Wall *w,  PosVector *emitter) {
-    const float prod = (-2 / w->size) * ((*emitter - w->v1) * w->n);
+    const float prod = -2 * ((*emitter - w->v1) * w->n);
     return PosVector(w->n.x *  prod + emitter->x, w->n.y * prod + emitter->y);
 }
 
-/*
-Adds the the point of the intersection between rx tx and a wall to the point list
-*/
+complex<float> transCoef(Wall &w, PosVector &d, float gamma) {
+    complex<float> rc = reflCoef(w, d);
+    complex<float> rcs = rc * rc;
+
+    return rc;
+}
+
+complex<float> reflCoef(Wall &w, PosVector &d) {
+    float prod = d * w.v;
+    complex<float> ratio = w.mat.imped * (float) ((d * w.n) / (Z0 * sqrt(d.getNorm() - prod * prod / (w.mat.epsr * w.size * w.size))));
+    return ((ratio - 1.0f) / (ratio + 1.0f));
+}
+
 bool intersection(PosVector *out, PosVector *rx, PosVector *tx, Wall *w) {
     const PosVector d = PosVector(rx->x - tx->x, rx->y - tx->y);
-    const float t = - (d.y * (tx->x - w->v1.x) - d.x * (tx->y - w->v1.y)) / (d.x * w->v.y - d.y * w->v.x);
+    const float t = - (d.y * (tx->x - w->v1.x) - d.x * (tx->y - w->v1.y)) 
+                    / (d.x * w->v.y - d.y * w->v.x);
    
     if(t < 0 || t > 1) return 1;
     *(out) = PosVector(w->v1.x + t * w->v.x, w->v1.y + t * w->v.y);
     return 0;
 }
 
-void test(forward_list<Wall> *walls, Wall *w, PosVector *r, PosVector *t, forward_list<Ray> *wrays, forward_list<PosVector> *dpts, int refl) {
+void test(vector<Wall> *walls, Wall *w, PosVector *r, PosVector *t, forward_list<Ray> *wrays, forward_list<PosVector> *dpts, int refl) {
     if(((*r - w->v1) * w->n) * ((*t - w->v1) * w->n) < 0) return;
 
     PosVector tx = getImage(w, t);
@@ -50,8 +61,7 @@ void test(forward_list<Wall> *walls, Wall *w, PosVector *r, PosVector *t, forwar
                 PosVector *p3 = (PosVector*) malloc(sizeof(PosVector));
                 if(intersection(p3, &(r->points.front()), &tx, w)) { r = ur.erase_after(before); continue; }
                 r->points.push_front(*p3);
-                before = r;
-                ++r;
+                before = r++; free(p3);
             }
             wrays->splice_after(wrays->before_begin(), ur);
         }

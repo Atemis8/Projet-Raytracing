@@ -22,6 +22,10 @@
 #include <iostream>
 #include "structs.hpp"
 #include "main.hpp"
+#include "saving.hpp"
+#include <memory>
+#include <stdexcept>
+#include <iterator>
 
 #define RED 0xFF0000FF
 #define GREEN 0x00FF00FF
@@ -33,6 +37,25 @@ static float ORIGINY = 0.1F;
 static float SCALE = 4.0f;
 
 #define POINT_SCALE 4.0f
+
+
+
+template<typename ... Args>
+std::string string_format( const std::string& format, Args ... args ) {
+    int size_s = std::snprintf( nullptr, 0, format.c_str(), args ... ) + 1; // Extra space for '\0'
+    if( size_s <= 0 ){ throw std::runtime_error( "Error during formatting." ); }
+    auto size = static_cast<size_t>( size_s );
+    std::unique_ptr<char[]> buf( new char[ size ] );
+    std::snprintf( buf.get(), size, format.c_str(), args ... );
+    return std::string( buf.get(), buf.get() + size - 1 ); // We don't want the '\0' inside
+}
+
+template<typename ... Args>
+void char_format(char*& dest, const std::string& format, Args ... args) {
+    int size_s = std::snprintf(nullptr, 0, format.c_str(), args ...) + 1;
+    dest = (char*) malloc(size_s);
+    std::snprintf(dest, size_s, format.c_str(), args ...);
+}
 
 ImU32 getColor(int color) {
     const int red = (color & 0xFF000000) >> 24;
@@ -49,6 +72,33 @@ ImVec2 setAxis(PosVector *v) {
 	return ImVec2(ORIGINX * size.x +  v->getX() * SCALE + cursor.x, size.y * (1 - ORIGINY) - v->getY() * SCALE + cursor.y);
 }
 
+ImVec2 setAxis(int x, int y) {
+	return ImVec2(ORIGINX * size.x +  x * SCALE + cursor.x, size.y * (1 - ORIGINY) - y * SCALE + cursor.y);
+}
+
+void setDefaultOptions(RaytracerOptions *options, unordered_map<int, int> *colorMap, 
+            unordered_map<int, Material> *matmap, int mat_nb, 
+            forward_list<PosVector> emitters) {
+   *(options) = {
+        .colors = colorMap,
+        .matmap = matmap, 
+        .nbReflections = 0,
+        .selectReflection = 1,
+        .show_debug = 1,
+        .show_demo = 0,
+        .background_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f), 
+        .show_walleditor = 0,
+        .show_raytracer = 1,
+        .mat_number = mat_nb,
+        .show_evalzone = 1,
+        .evalO = PosVector(0, 0),
+        .evalZ = PosVector(10, 10),
+        .eval_size = 10,
+        .emitters = emitters
+    };
+    options->emitters.push_front(PosVector(32.0F, 10.0F));
+}
+
 //AddPolyline(const ImVec2* points, int num_points, ImU32 col, ImDrawFlags flags, float thickness);
 
 void drawRay(Ray *r, ImDrawList* draw_list, int nb) {
@@ -57,7 +107,7 @@ void drawRay(Ray *r, ImDrawList* draw_list, int nb) {
         draw_list->AddLine(setAxis(&(*p)), setAxis(&(*++p)), getColor(r->color));
 }
 
-void drawRaytracer(RaytracerResult *result, RaytracerOptions *options) {
+void drawRaytracer(RaytracerResult *result, RaytracerOptions *o) {
     ImGui::Begin("Raytracer");
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     cursor = ImGui::GetCursorScreenPos();
@@ -65,22 +115,111 @@ void drawRaytracer(RaytracerResult *result, RaytracerOptions *options) {
 
     draw_list->AddCircleFilled(setAxis(result->emitter), POINT_SCALE, getColor(GREEN));
     draw_list->AddCircleFilled(setAxis(result->receiver), POINT_SCALE, getColor(GREEN));
-
     for(Ray &r : *(result->rays)) {
         int nb = distance(r.points.begin(), r.points.end());
-        if(options->selectReflection && (options->nbReflections + 2 != nb)) continue;
+        if(o->selectReflection && (o->nbReflections + 2 != nb)) continue;
         drawRay(&r, draw_list, nb);
     }
-    for(Wall w : *(result->walls)) 
-        draw_list->AddLine(setAxis(&w.v1), setAxis(&w.v2), options->colors->at(w.mat.id), 2);
-    
-    if(options->show_debug)
+    for(Wall w : *(result->walls))
+        draw_list->AddLine(setAxis(&w.v1), setAxis(&w.v2), o->colors->at(w.mat.id), 2);
+    if(o->show_debug)
     for(PosVector v : *(result->debug_points))
         draw_list->AddCircleFilled(setAxis(&v), POINT_SCALE, getColor(RED));
-
+    if(o->show_evalzone) {
+        PosVector evalZone = (o->evalZ * (float)(o->eval_size));
+        draw_list->AddRect(setAxis(&o->evalO), setAxis(&evalZone), getColor(BLUE));
+        for(int x = o->evalO.x; x < evalZone.x; x += o->eval_size)
+            draw_list->AddLine(setAxis(x, o->evalO.y), setAxis(x, evalZone.y), getColor(BLUE), 0.1f);
+        for(int y = o->evalO.y; y < evalZone.y; y += o->eval_size)
+            draw_list->AddLine(setAxis(o->evalO.x, y), setAxis(evalZone.x, y), getColor(BLUE), 0.1f);
+            
+    }
     ImGui::Dummy(ImVec2(500, 500));
     ImGui::End();
 }
+
+void drawOptions(RaytracerResult *result, RaytracerOptions *o) {
+    static int counter = 0;
+    static int ref_option = 1;
+    ImGui::Begin("Options");  
+
+    // Problem Creation
+    ImGui::Text("Create a new Raytracing problem :"); 
+    ImGui::InputInt("Reflections", &ref_option);
+    if(ref_option < 1) ref_option = 1;
+    if(ImGui::Button("Start Simulation"))
+        solveProblem(result, &o->emitters, ref_option);
+
+    // Evaluation Zone (ie : Zone where the calculations take place)
+    ImGui::Text("Evaluation Zone");
+    ImGui::Checkbox("Show Zone", &(o->show_evalzone));
+    static int vO[2]; vO[0] = o->evalO.x; vO[1] = o->evalO.y;
+    if(ImGui::InputInt2("Origin", vO)) {
+        o->evalO.x = (float) vO[0];
+        o->evalO.y = (float) vO[1];
+    }
+    static int vZ[2]; vZ[0] = o->evalZ.x; vZ[1] = o->evalZ.y;
+    if(ImGui::InputInt2("Zone Number", vZ)) {
+        o->evalZ.x = (float) vZ[0];
+        o->evalZ.y = (float) vZ[1];
+    }
+    ImGui::InputInt("Size", &o->eval_size);
+    
+    // Already existing simulation options
+    ImGui::Text("Current Simulation");
+    ImGui::Checkbox("Select Reflection", &(o->selectReflection));
+    if(o->selectReflection)
+        ImGui::SliderInt("Reflections", &(o->nbReflections), 0.0f, result->reflections);    // Edit 1 float using a slider from 0.0f to 1.0f
+    ImGui::Checkbox("Show Debug Points", &(o->show_debug));
+    ImGui::SliderFloat("Origin X", &ORIGINX, 0.0f, 1.0f);
+    ImGui::SliderFloat("Origin Y", &ORIGINY, 0.0f, 1.0f);
+    ImGui::SliderFloat("Scale", &SCALE, 1.0f, 10.0f);
+
+    ImGui::ColorEdit3("Background color", (float*)&(o->background_color));
+    ImGui::Checkbox("Demo Window", &(o->show_demo));
+    const string s = string_format("%s Wall Editor", (o->show_walleditor ? "Hide" : "Show"));
+    if(ImGui::Button(s.c_str())) o->show_walleditor = !o->show_walleditor;
+    ImGui::SameLine();
+    const string s1 = string_format("%s Raytracer", (o->show_raytracer ? "Hide" : "Show"));
+    if(ImGui::Button(s1.c_str())) o->show_raytracer = !o->show_raytracer;
+
+    ImGui::End();
+}
+
+static int wall_item = 0;
+static int mat_item = 0;
+void drawWallEditor(RaytracerResult *res, RaytracerOptions *o) {
+    auto fw = res->walls->begin();
+    auto nb = distance(fw, res->walls->end());
+    char **items = (char **) malloc(nb * sizeof(char*));
+    int i = 0; 
+    for(Wall &w : *res->walls)
+        char_format(items[i++], "%s, (%0.1f, %0.1f) -> (%0.1f, %0.1f)", 
+                w.mat.name.c_str(), w.v1.x, w.v1.y, w.v2.x, w.v2.y);
+    ImGui::Begin("Wall Editor");  
+    ImGui::ListBox("##wall_select", &wall_item, items, nb);
+    for(int j = 0; j < i; ++j) free(items[j]); free(items);
+
+    ImGui::Text("Manange Walls");
+
+    // Material list
+    char **materials = (char **) malloc(o->mat_number * sizeof(char*));
+    for(int j = 0; j < o->mat_number; ++j)
+        char_format(materials[j], "%s", o->matmap->at(j).name.c_str());  
+    ImGui::Combo("##mats", &mat_item, materials, o->mat_number);
+    static float v1[2]; 
+    ImGui::InputFloat2("Vector 1", v1);
+    static float v2[2]; 
+    ImGui::InputFloat2("Vector 2", v2);
+
+    if(ImGui::Button("Remove")) res->walls->erase(res->walls->begin() + wall_item);
+    ImGui::SameLine();
+
+    if(ImGui::Button("Add Wall"))
+        addWall(o->matmap->at(mat_item), PosVector(v1[0], v1[1]), PosVector(v2[0], v2[1]));
+    ImGui::End();
+}
+
 
 // Main code
 int imgui_test(RaytracerResult *result, RaytracerOptions *options) {
@@ -153,10 +292,6 @@ int imgui_test(RaytracerResult *result, RaytracerOptions *options) {
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    // Our state
-    bool show_demo_window = false;
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
     // Main loop
     bool done = false;
     while (!done) {
@@ -179,54 +314,33 @@ int imgui_test(RaytracerResult *result, RaytracerOptions *options) {
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
 
+
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-        if (show_demo_window)
-            ImGui::ShowDemoWindow(&show_demo_window);
+        if (options->show_demo)
+            ImGui::ShowDemoWindow(&(options->show_demo));
 
         // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
-        {
-            
-            static int counter = 0;
-            static int ref_option = 1;
+        drawOptions(result, options);
 
-            ImGui::Begin("Options");  
-            ImGui::Text("Create a new Raytracing problem :"); 
-            ImGui::InputInt("Reflections", &ref_option);
-            if(ref_option < 1) ref_option = 1;
-            if(ImGui::Button("Start Simulation")) {
-                solveProblem(result, ref_option);
-            }      
-            
-            ImGui::Text("Current Simulation Options : ");
-            ImGui::Checkbox("Select Reflection", &(options->selectReflection));
-            if(options->selectReflection)
-                ImGui::SliderInt("Reflections", &(options->nbReflections), 0.0f, result->reflections);    // Edit 1 float using a slider from 0.0f to 1.0f
-            ImGui::Checkbox("Show Debug Points", &(options->show_debug));
-            ImGui::SliderFloat("Origin X", &ORIGINX, 0.0f, 1.0f);
-            ImGui::SliderFloat("Origin Y", &ORIGINY, 0.0f, 1.0f);
-            ImGui::SliderFloat("Scale", &SCALE, 1.0f, 10.0f);
-
-            ImGui::Checkbox("Demo Window", &show_demo_window);
-            ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-
-            if (ImGui::Button("Button")) counter++;                 // Buttons return true when clicked (most widgets return true when edited/activated) 
-            ImGui::SameLine();
-            ImGui::Text("counter = %d", counter);
-
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-            ImGui::End();
-        }
-
-        drawRaytracer(result, options);
+        if(options->show_raytracer)
+            drawRaytracer(result, options);
+        if(options->show_walleditor)
+            drawWallEditor(result, options);
 
         // Rendering
         ImGui::Render();
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-        glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
+        glClearColor(options->background_color.x * options->background_color.w, 
+                    options->background_color.y * options->background_color.w, 
+                    options->background_color.z * options->background_color.w, 
+                    options->background_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         SDL_GL_SwapWindow(window);
     }
+
+    // Save files
+    save_problem(result->walls, &options->emitters);
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();

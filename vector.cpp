@@ -7,6 +7,11 @@ PosVector::PosVector(float x, float y) {
     this->y = y;
 }
 
+PosVector::PosVector() {
+    this->x = 0.0f;
+    this->y = 0.0f;
+}
+
 float PosVector::getNorm() const {
     return (x * x + y * y);
 }
@@ -19,6 +24,20 @@ void PosVector::setY(float y) { this->y = y; }
 
 void PosVector::print() const {
     printf("(%f, %f) \n", x, y);
+}
+
+std::ostream & operator << (std::ostream &out, PosVector &c) {
+    return out << "(" << c.x << ", " << c.y << ")";
+}
+
+std::istream & operator >> (std::istream &in,  PosVector &c) {
+    char space;
+    in >> space;
+    in >> c.x;
+    in >> space;
+    in >> c.y;
+    in >> space;
+    return in;
 }
 
 PosVector PosVector::operator +(PosVector &v) {

@@ -7,6 +7,10 @@ class PosVector {
     public:
     float x, y;
     PosVector(float x, float y);
+    PosVector();
+
+    friend std::ostream & operator << (std::ostream &out, PosVector &c);
+    friend std::istream & operator >> (std::istream &in,  PosVector &c);
 
     float getX() const;
     float getY() const;

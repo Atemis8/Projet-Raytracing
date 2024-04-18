@@ -1,52 +1,72 @@
 #include <complex>
 #include <forward_list>
 #include <unordered_map>
+#include <string>
+#include <vector>
 #include "vector.hpp"
+#include "imgui/imgui.h"
 
-#define FREQ 60E9
+#define FREQ 868E6
+#define PI 3.1415926535897932f
+#define MU0 (PI * 4E-7)
+#define EPSILON0 8.85418782E-12
+#define Z0 376.730313668
 
 #ifndef utilitystructs
 
 using namespace std;
 
-typedef struct _Material {
-    float relp;
+struct Material {
+    float epsr;
     float cond;
     float thck;
     int id;
-    std::complex<float> perm;
-} Material;
+    string name;
+    complex<float> perm;
+    complex<float> imped;
+};
 
-typedef struct _Wall {
+struct Wall {
     Material mat;
     PosVector v1;
     PosVector v2;
-    const float size;
-    const PosVector v;
+    float size;
+    PosVector v;
     PosVector n;
-} Wall;
+};
 
-typedef struct _Ray {
+struct Ray {
     std::forward_list<PosVector> points;
     float distsq;
     int color;
-} Ray;
+};
 
-typedef struct _RaytracerResult {
+struct RaytracerResult {
     PosVector *emitter;
     PosVector *receiver;
-    forward_list<Wall> *walls;
+    vector<Wall> *walls;
     forward_list<PosVector> *debug_points;
     forward_list<Ray> *rays;
     int reflections;
-} RaytracerResult;
+};
 
-typedef struct _RaytracerOptions {
+struct RaytracerOptions {
     unordered_map<int, int> *colors;
+    unordered_map<int, Material> *matmap;
     int nbReflections;
     bool selectReflection;
     bool show_debug;
-} RaytracerOptions;
+    bool show_demo;
+    ImVec4 background_color;
+    bool show_walleditor;
+    bool show_raytracer;
+    int mat_number;
+    bool show_evalzone;
+    PosVector evalO;
+    PosVector evalZ;
+    int eval_size;
+    forward_list<PosVector> emitters;
+};
 
 #define utilitystructs 
 #endif
