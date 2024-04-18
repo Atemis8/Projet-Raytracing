@@ -56,10 +56,8 @@ void solveProblem(RaytracerResult *res, forward_list<PosVector> *emitters, int r
 	rays.clear();
 	debug_points.clear();
 	time_t time1 = time(NULL);
-	for(PosVector v : *emitters) {
-		*(res) = {&v, &receiver, &walls, &debug_points, &rays, reflections};
-		traceRays(res);
-	}
+	*(res) = {emitters, &receiver, &walls, &debug_points, &rays, reflections};
+	traceRays(res);
 	time_t time2 = time(NULL);
 	cout << ((float) (time2 - time1)) << "ms" << endl;
 }

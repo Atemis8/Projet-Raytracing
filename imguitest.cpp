@@ -84,19 +84,20 @@ void setDefaultOptions(RaytracerOptions *options, unordered_map<int, int> *color
         .matmap = matmap, 
         .nbReflections = 0,
         .selectReflection = 1,
-        .show_debug = 1,
+        .show_debug = 0,
         .show_demo = 0,
         .background_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f), 
         .show_walleditor = 0,
         .show_raytracer = 1,
         .mat_number = mat_nb,
-        .show_evalzone = 1,
+        .show_evalzone = 0,
         .evalO = PosVector(0, 0),
         .evalZ = PosVector(10, 10),
         .eval_size = 10,
         .emitters = emitters
     };
-    options->emitters.push_front(PosVector(32.0F, 10.0F));
+    options->emitters.push_front(PosVector(32.0f, 10.0f));
+    options->emitters.push_front(PosVector(50.0f, 50.0f));
 }
 
 //AddPolyline(const ImVec2* points, int num_points, ImU32 col, ImDrawFlags flags, float thickness);
@@ -112,8 +113,10 @@ void drawRaytracer(RaytracerResult *result, RaytracerOptions *o) {
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     cursor = ImGui::GetCursorScreenPos();
     size = ImGui::GetWindowSize();
+    
+    for(PosVector v : *result->emitters)
+        draw_list->AddCircleFilled(setAxis(&v), POINT_SCALE, getColor(GREEN));
 
-    draw_list->AddCircleFilled(setAxis(result->emitter), POINT_SCALE, getColor(GREEN));
     draw_list->AddCircleFilled(setAxis(result->receiver), POINT_SCALE, getColor(GREEN));
     for(Ray &r : *(result->rays)) {
         int nb = distance(r.points.begin(), r.points.end());

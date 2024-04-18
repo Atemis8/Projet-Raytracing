@@ -26,6 +26,7 @@ void load_problem(forward_list<PosVector> *emitters, unordered_map<int, Material
         char space;
         while(inputFile) {
             getline(inputFile, s);
+            if(s.size() == 0) continue;
             istringstream line(s);
             line >> matid;
             line >> space;

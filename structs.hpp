@@ -42,7 +42,7 @@ struct Ray {
 };
 
 struct RaytracerResult {
-    PosVector *emitter;
+    forward_list<PosVector> *emitters;
     PosVector *receiver;
     vector<Wall> *walls;
     forward_list<PosVector> *debug_points;

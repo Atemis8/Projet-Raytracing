@@ -75,16 +75,20 @@ void test(vector<Wall> *walls, Wall *w, PosVector *r, PosVector *t, forward_list
 // Pour chaque TX on a 2 cas : murs et pas murs, cas mur uniquement si on a refl > 0
 
 void traceRays(RaytracerResult *res) {
-    forward_list<PosVector> directPath;
-    directPath.push_front(*(res->receiver));
-    Ray r = {directPath, (*(res->receiver) - *(res->emitter)).getNorm(), static_cast<int>(0xFF0000FF)};
-    res->rays->push_front(r);
-    for(Wall w : *(res->walls)) {
-        forward_list<Ray> t;
-        test(res->walls, &w, res->receiver, res->emitter, &t, res->debug_points, res->reflections);
-        (res->rays)->splice_after((res->rays)->before_begin(), t);
-    }
-    for(Ray &r : *(res->rays)) {
-        r.points.push_front(*(res->emitter));
+    for(PosVector em : *res->emitters) {
+        forward_list<Ray> rays;
+        forward_list<PosVector> directPath;
+        directPath.push_front(*(res->receiver));
+        Ray r = {directPath, (*(res->receiver) - em).getNorm(), static_cast<int>(0xFF0000FF)};
+        rays.push_front(r);
+        for(Wall w : *(res->walls)) {
+            forward_list<Ray> t;
+            test(res->walls, &w, res->receiver, &em, &t, res->debug_points, res->reflections);
+            rays.splice_after(rays.before_begin(), t);
+        }
+        for(Ray &r : rays) {
+            r.points.push_front(em);
+        }
+        res->rays->splice_after(res->rays->before_begin(), rays);
     }
 }
