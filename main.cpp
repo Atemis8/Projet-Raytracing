@@ -48,15 +48,21 @@ void initColorMap(unordered_map<int, int> *m) {
 	m->insert(pair<int, int>(metal.id, 0xd3d3d3FF));
 }
 
-static PosVector emitter = PosVector(32.0F, 10.0F);
-static PosVector receiver = PosVector(47.0F, 65.0F);
 static forward_list<PosVector> debug_points;
-static forward_list<Ray> rays;
-void solveProblem(RaytracerResult *res, forward_list<PosVector> *emitters, int reflections) {
+static vector<forward_list<Ray>> rays;
+void solveProblem(RaytracerResult *res, vector<PosVector> *emitters, vector<PosVector> *receivers, int reflections) {
 	rays.clear();
 	debug_points.clear();
 	time_t time1 = time(NULL);
-	*(res) = {emitters, &receiver, &walls, &debug_points, &rays, reflections};
+	*(res) = {
+		.emitters = emitters, 
+		.receivers = receivers,
+		.walls = &walls,
+		.debug_points = &debug_points,
+		.rays = &rays,
+		.reflections = reflections
+	};
+	rays = vector<forward_list<Ray>>(receivers->size());
 	traceRays(res);
 	time_t time2 = time(NULL);
 	cout << ((float) (time2 - time1)) << "ms" << endl;
@@ -74,14 +80,15 @@ int main(int argc, char *argv[]) {
 	unordered_map<int, int> colorMap;
 	initColorMap(&colorMap);
 
-	forward_list<PosVector> emitters;
+	vector<PosVector> emitters;
+	vector<PosVector> receivers;
 	load_problem(&emitters, &matmap);
 
 	RaytracerResult result;
 	RaytracerOptions options;
-	setDefaultOptions(&options, &colorMap, &matmap, mat_id, emitters);
+	setDefaultOptions(&options, &colorMap, &matmap, mat_id, &emitters, &receivers);
+	solveProblem(&result, &options.emitters, &options.receivers, 3);
 
-	solveProblem(&result, &options.emitters, 3);
 	imgui_test(&result, &options);
 	return 0;
 }

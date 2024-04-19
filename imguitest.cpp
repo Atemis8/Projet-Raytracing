@@ -1,12 +1,3 @@
-// Dear ImGui: standalone example application for SDL2 + OpenGL
-// (SDL is a cross-platform general purpose library for handling windows, inputs, OpenGL/Vulkan/Metal graphics context creation, etc.)
-
-// Learn about Dear ImGui:
-// - FAQ                  https://dearimgui.com/faq
-// - Getting Started      https://dearimgui.com/getting-started
-// - Documentation        https://dearimgui.com/docs (same as your local docs/ folder).
-// - Introduction, links and more at the top of imgui.cpp
-
 #include "imgui/imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_opengl3.h"
@@ -78,7 +69,7 @@ ImVec2 setAxis(int x, int y) {
 
 void setDefaultOptions(RaytracerOptions *options, unordered_map<int, int> *colorMap, 
             unordered_map<int, Material> *matmap, int mat_nb, 
-            forward_list<PosVector> emitters) {
+            vector<PosVector> *emitters, vector<PosVector> *receivers) {
    *(options) = {
         .colors = colorMap,
         .matmap = matmap, 
@@ -94,10 +85,13 @@ void setDefaultOptions(RaytracerOptions *options, unordered_map<int, int> *color
         .evalO = PosVector(0, 0),
         .evalZ = PosVector(10, 10),
         .eval_size = 10,
-        .emitters = emitters
+        .emitters = *(emitters),
+        .receivers = *(receivers)
     };
-    options->emitters.push_front(PosVector(32.0f, 10.0f));
-    options->emitters.push_front(PosVector(50.0f, 50.0f));
+    options->emitters.push_back(PosVector(32.0f, 10.0f));
+    options->emitters.push_back(PosVector(50.0f, 50.0f));
+    options->receivers.push_back(PosVector(47.0F, 65.0F));
+    options->receivers.push_back(PosVector(80.0F, 30.0F));
 }
 
 //AddPolyline(const ImVec2* points, int num_points, ImU32 col, ImDrawFlags flags, float thickness);
@@ -108,6 +102,7 @@ void drawRay(Ray *r, ImDrawList* draw_list, int nb) {
         draw_list->AddLine(setAxis(&(*p)), setAxis(&(*++p)), getColor(r->color));
 }
 
+static int receiver_index = 0;
 void drawRaytracer(RaytracerResult *result, RaytracerOptions *o) {
     ImGui::Begin("Raytracer");
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
@@ -117,12 +112,13 @@ void drawRaytracer(RaytracerResult *result, RaytracerOptions *o) {
     for(PosVector v : *result->emitters)
         draw_list->AddCircleFilled(setAxis(&v), POINT_SCALE, getColor(GREEN));
 
-    draw_list->AddCircleFilled(setAxis(result->receiver), POINT_SCALE, getColor(GREEN));
-    for(Ray &r : *(result->rays)) {
+    draw_list->AddCircleFilled(setAxis(&((*result->receivers)[receiver_index])), POINT_SCALE, getColor(GREEN));
+    for(Ray &r : (*result->rays)[receiver_index]) {
         int nb = distance(r.points.begin(), r.points.end());
         if(o->selectReflection && (o->nbReflections + 2 != nb)) continue;
         drawRay(&r, draw_list, nb);
     }
+    
     for(Wall w : *(result->walls))
         draw_list->AddLine(setAxis(&w.v1), setAxis(&w.v2), o->colors->at(w.mat.id), 2);
     if(o->show_debug)
@@ -135,7 +131,6 @@ void drawRaytracer(RaytracerResult *result, RaytracerOptions *o) {
             draw_list->AddLine(setAxis(x, o->evalO.y), setAxis(x, evalZone.y), getColor(BLUE), 0.1f);
         for(int y = o->evalO.y; y < evalZone.y; y += o->eval_size)
             draw_list->AddLine(setAxis(o->evalO.x, y), setAxis(evalZone.x, y), getColor(BLUE), 0.1f);
-            
     }
     ImGui::Dummy(ImVec2(500, 500));
     ImGui::End();
@@ -151,7 +146,7 @@ void drawOptions(RaytracerResult *result, RaytracerOptions *o) {
     ImGui::InputInt("Reflections", &ref_option);
     if(ref_option < 1) ref_option = 1;
     if(ImGui::Button("Start Simulation"))
-        solveProblem(result, &o->emitters, ref_option);
+        solveProblem(result, &o->emitters, &o->receivers, ref_option);
 
     // Evaluation Zone (ie : Zone where the calculations take place)
     ImGui::Text("Evaluation Zone");
@@ -170,6 +165,7 @@ void drawOptions(RaytracerResult *result, RaytracerOptions *o) {
     
     // Already existing simulation options
     ImGui::Text("Current Simulation");
+    ImGui::SliderInt("Select Receiver", &receiver_index, 0.0f, o->receivers.size() - 1);
     ImGui::Checkbox("Select Reflection", &(o->selectReflection));
     if(o->selectReflection)
         ImGui::SliderInt("Reflections", &(o->nbReflections), 0.0f, result->reflections);    // Edit 1 float using a slider from 0.0f to 1.0f

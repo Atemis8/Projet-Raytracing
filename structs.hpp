@@ -42,11 +42,11 @@ struct Ray {
 };
 
 struct RaytracerResult {
-    forward_list<PosVector> *emitters;
-    PosVector *receiver;
+    vector<PosVector> *emitters;
+    vector<PosVector> *receivers;
     vector<Wall> *walls;
     forward_list<PosVector> *debug_points;
-    forward_list<Ray> *rays;
+    vector<forward_list<Ray>> *rays;
     int reflections;
 };
 
@@ -65,7 +65,8 @@ struct RaytracerOptions {
     PosVector evalO;
     PosVector evalZ;
     int eval_size;
-    forward_list<PosVector> emitters;
+    vector<PosVector> emitters;
+    vector<PosVector> receivers;
 };
 
 #define utilitystructs 

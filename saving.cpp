@@ -7,7 +7,7 @@
 
 using namespace std;
 
-void save_problem(vector<Wall> *walls, forward_list<PosVector> *emitters) {
+void save_problem(vector<Wall> *walls, vector<PosVector> *emitters) {
     if(mkdir("saves", 0777) == -1) cout << "No need to create directory" << endl;
     ofstream outputFile("saves/walls.dat");
     if(outputFile.is_open()) {
@@ -17,7 +17,7 @@ void save_problem(vector<Wall> *walls, forward_list<PosVector> *emitters) {
     } else cout << "File is not opened" << endl;
 }
 
-void load_problem(forward_list<PosVector> *emitters, unordered_map<int, Material> *matmap) {
+void load_problem(vector<PosVector> *emitters, unordered_map<int, Material> *matmap) {
     ifstream inputFile("saves/walls.dat");
     if(inputFile.is_open()) {
         string s;

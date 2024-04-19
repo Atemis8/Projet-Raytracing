@@ -1,5 +1,5 @@
 
 #include "structs.hpp"
 
-void save_problem(vector<Wall> *walls, forward_list<PosVector> *emitters);
-void load_problem(forward_list<PosVector> *emitters, unordered_map<int, Material> *matmap);
+void save_problem(vector<Wall> *walls, vector<PosVector> *emitters);
+void load_problem(vector<PosVector> *emitters, unordered_map<int, Material> *matmap);
