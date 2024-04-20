@@ -7,9 +7,11 @@
 
 using namespace std;
 
+static string filepath = "saves/walls_final.dat";
+
 void save_problem(vector<Wall> *walls, vector<PosVector> *emitters) {
     if(mkdir("saves", 0777) == -1) cout << "No need to create directory" << endl;
-    ofstream outputFile("saves/walls.dat");
+    ofstream outputFile(filepath);
     if(outputFile.is_open()) {
         for(Wall w : *walls) 
             outputFile << w.mat.id << ";" << w.v1 << ";" << w.v2 << endl;
@@ -18,7 +20,7 @@ void save_problem(vector<Wall> *walls, vector<PosVector> *emitters) {
 }
 
 void load_problem(vector<PosVector> *emitters, unordered_map<int, Material> *matmap) {
-    ifstream inputFile("saves/walls.dat");
+    ifstream inputFile(filepath);
     if(inputFile.is_open()) {
         string s;
         int matid;

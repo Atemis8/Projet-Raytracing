@@ -83,8 +83,8 @@ void setDefaultOptions(RaytracerOptions *options, unordered_map<int, int> *color
         .mat_number = mat_nb,
         .show_evalzone = 0,
         .evalO = PosVector(0, 0),
-        .evalZ = PosVector(10, 10),
-        .eval_size = 10,
+        .evalZ = PosVector(5, 4),
+        .eval_size = 20,
         .emitters = *(emitters),
         .receivers = *(receivers)
     };
@@ -102,28 +102,35 @@ void drawRay(Ray *r, ImDrawList* draw_list, int nb) {
         draw_list->AddLine(setAxis(&(*p)), setAxis(&(*++p)), getColor(r->color));
 }
 
-static int receiver_index = 0;
+static int receiver_index = 1;
 void drawRaytracer(RaytracerResult *result, RaytracerOptions *o) {
     ImGui::Begin("Raytracer");
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     cursor = ImGui::GetCursorScreenPos();
     size = ImGui::GetWindowSize();
     
+    // Draw the emitters
     for(PosVector v : *result->emitters)
-        draw_list->AddCircleFilled(setAxis(&v), POINT_SCALE, getColor(GREEN));
+        draw_list->AddCircleFilled(setAxis(&v), POINT_SCALE, getColor(BLUE));
 
-    draw_list->AddCircleFilled(setAxis(&((*result->receivers)[receiver_index])), POINT_SCALE, getColor(GREEN));
-    for(Ray &r : (*result->rays)[receiver_index]) {
+    // Reciever Selection and tracing Rays
+    draw_list->AddCircleFilled(setAxis(&((*result->receivers)[receiver_index - 1])), POINT_SCALE, getColor(GREEN));
+    for(Ray &r : (*result->rays)[receiver_index - 1]) {
         int nb = distance(r.points.begin(), r.points.end());
         if(o->selectReflection && (o->nbReflections + 2 != nb)) continue;
         drawRay(&r, draw_list, nb);
     }
     
+    // Draw the walls
     for(Wall w : *(result->walls))
         draw_list->AddLine(setAxis(&w.v1), setAxis(&w.v2), o->colors->at(w.mat.id), 2);
+
+    // Show debug points
     if(o->show_debug)
     for(PosVector v : *(result->debug_points))
         draw_list->AddCircleFilled(setAxis(&v), POINT_SCALE, getColor(RED));
+
+    // Emitter selection zone
     if(o->show_evalzone) {
         PosVector evalZone = (o->evalZ * (float)(o->eval_size));
         draw_list->AddRect(setAxis(&o->evalO), setAxis(&evalZone), getColor(BLUE));
@@ -147,6 +154,14 @@ void drawOptions(RaytracerResult *result, RaytracerOptions *o) {
     if(ref_option < 1) ref_option = 1;
     if(ImGui::Button("Start Simulation"))
         solveProblem(result, &o->emitters, &o->receivers, ref_option);
+    if(ImGui::Button("Start Complete Simulation")) {
+        static vector<PosVector> emts; emts.clear();
+        PosVector evalZone = (o->evalZ * (float)(o->eval_size));
+        for(float x = o->eval_size / 2; x < evalZone.x; x += o->eval_size)
+            for(float y = o->eval_size / 2; y < evalZone.y; y += o->eval_size)
+                emts.push_back(PosVector(x, y));
+        solveProblem(result, &o->emitters, &emts, ref_option);
+    }
 
     // Evaluation Zone (ie : Zone where the calculations take place)
     ImGui::Text("Evaluation Zone");
@@ -165,7 +180,11 @@ void drawOptions(RaytracerResult *result, RaytracerOptions *o) {
     
     // Already existing simulation options
     ImGui::Text("Current Simulation");
-    ImGui::SliderInt("Select Receiver", &receiver_index, 0.0f, o->receivers.size() - 1);
+    // 1, result->receivers->size()
+    if(ImGui::InputInt("Select Receiver", &receiver_index)) {
+        if(receiver_index < 1) receiver_index = 1;
+        if(receiver_index > result->receivers->size()) receiver_index = result->receivers->size();
+    }
     ImGui::Checkbox("Select Reflection", &(o->selectReflection));
     if(o->selectReflection)
         ImGui::SliderInt("Reflections", &(o->nbReflections), 0.0f, result->reflections);    // Edit 1 float using a slider from 0.0f to 1.0f

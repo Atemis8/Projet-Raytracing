@@ -53,7 +53,7 @@ static vector<forward_list<Ray>> rays;
 void solveProblem(RaytracerResult *res, vector<PosVector> *emitters, vector<PosVector> *receivers, int reflections) {
 	rays.clear();
 	debug_points.clear();
-	time_t time1 = time(NULL);
+	clock_t begin = clock();
 	*(res) = {
 		.emitters = emitters, 
 		.receivers = receivers,
@@ -64,8 +64,9 @@ void solveProblem(RaytracerResult *res, vector<PosVector> *emitters, vector<PosV
 	};
 	rays = vector<forward_list<Ray>>(receivers->size());
 	traceRays(res);
-	time_t time2 = time(NULL);
-	cout << ((float) (time2 - time1)) << "ms" << endl;
+	clock_t end = clock();
+	double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+	cout << "Time taken : " << time_spent << "ms, " << end - begin << " clocks" << endl;
 }
 
 

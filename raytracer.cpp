@@ -75,7 +75,6 @@ void test(vector<Wall> *walls, Wall *w, PosVector *r, PosVector *t, forward_list
 // Pour chaque TX on a 2 cas : murs et pas murs, cas mur uniquement si on a refl > 0
 
 void traceRays(RaytracerResult *res) {
-    cout << (*res->receivers)[0] << endl;
     for(int i = 0; i < res->receivers->size(); ++i) {
         for(PosVector em : *res->emitters) {
             forward_list<Ray> rays;
@@ -96,4 +95,5 @@ void traceRays(RaytracerResult *res) {
             (*res->rays)[i].splice_after((*res->rays)[i].before_begin(), rays);
         }
     }
+    cout << "Simualtion Complete : " << res->rays->size() << endl;
 }
