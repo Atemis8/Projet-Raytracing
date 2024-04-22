@@ -14,12 +14,14 @@
 using namespace std;
 
 static int mat_id = 0;
-static unordered_map<int, Material> matmap; // Maybe changing it to froward list
+static unordered_map<int, Material> matmap;
+static unordered_map<int, int> colorMap;
 static complex<float> mu0 = complex<float>(MU0, 0);
-Material material(string name, float epsr, float cond, float thck) {
+Material material(string name, float epsr, float cond, float thck, int color) {
 	complex<float> perm = complex<float>(epsr * EPSILON0, -cond / (FREQ * 2 * PI));
 	const Material m = {.id = mat_id, .epsr = epsr, .cond=cond, .thck=thck, .perm=perm, .imped=sqrt(mu0 / perm), .name = name};
     matmap[mat_id] = m; 
+	colorMap[mat_id] = color;
 	++mat_id;
     return m;
 }
@@ -32,20 +34,14 @@ void addWall(Material mat, PosVector v1, PosVector v2) {
 	walls.push_back(w);
 }
 
-const Material test = material("Test", 4.8, 0.018, 0.15);
-const Material brick = material("Brick", 3.95, 0.073, 0.1); // Pas d'infos sur les briques dans notre simulation
-const Material concr = material("Concrete", 6.4954, 1.43, 0.3);
-const Material wallm = material("Partition", 2.7, 0.05346, 0.1);
-const Material glass = material("Glass", 6.3919, 0.00107, 0.05);
-const Material metal = material("Metal", 1, 1E7, 0.05);
-
-void initColorMap(unordered_map<int, int> *m) { 
-	m->insert(pair<int, int>(test.id, 0xFF0F0FFF));
-	m->insert(pair<int, int>(brick.id, 0xFF0000FF));
-	m->insert(pair<int, int>(concr.id, 0x808080FF));
-	m->insert(pair<int, int>(wallm.id, 0xFFA500FF));
-	m->insert(pair<int, int>(glass.id, 0xFFFFFFFF));
-	m->insert(pair<int, int>(metal.id, 0xd3d3d3FF));
+void init_materials() {
+	material("Test", 4.8, 0.018, 0.15, 0xFF0F0FFF);
+	material("Brick", 3.95, 0.073, 0.1, 0xFF0000FF);
+	material("Concrete", 6.4954, 1.43, 0.3, 0x808080FF);
+	material("Partition", 2.7, 0.05346, 0.1, 0xFFA500FF);
+	material("Glass", 6.3919, 0.00107, 0.05, 0xFFFFFFFF);
+	material("Metal", 1, 1E7, 0.05, 0xd3d3d3FF);
+	material("Other", 1, 1, 1, 0x00FFFFFF);
 }
 
 static forward_list<PosVector> debug_points;
@@ -66,20 +62,13 @@ void solveProblem(RaytracerResult *res, vector<PosVector> *emitters, vector<PosV
 	traceRays(res);
 	clock_t end = clock();
 	double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-	cout << "Time taken : " << time_spent << "ms, " << end - begin << " clocks" << endl;
+	cout << "Time taken : " << time_spent * 1000 << "ms, " << end - begin << " clocks" << endl;
 }
 
 
 int main(int argc, char *argv[]) {
 	srand(time(NULL));
-
-	forward_list<PosVector> list1;
-	list1.push_front(PosVector(10, 10));
-	list1.push_front(PosVector(20, 10));
-	list1.push_front(PosVector(30, 10));
-	
-	unordered_map<int, int> colorMap;
-	initColorMap(&colorMap);
+	init_materials();
 
 	vector<PosVector> emitters;
 	vector<PosVector> receivers;
@@ -93,9 +82,3 @@ int main(int argc, char *argv[]) {
 	imgui_test(&result, &options);
 	return 0;
 }
-
-/*
-for(Wall w : walls) w.n.print();
-for(int i = 0; i < mat_id; ++i)
-	cout << matmap[i].name << " : " << matmap[i].imped << endl;
-*/

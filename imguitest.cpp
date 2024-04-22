@@ -83,13 +83,12 @@ void setDefaultOptions(RaytracerOptions *options, unordered_map<int, int> *color
         .mat_number = mat_nb,
         .show_evalzone = 0,
         .evalO = PosVector(0, 0),
-        .evalZ = PosVector(5, 4),
-        .eval_size = 20,
+        .evalZ = PosVector(30, 16),
+        .eval_size = 5,
         .emitters = *(emitters),
         .receivers = *(receivers)
     };
     options->emitters.push_back(PosVector(32.0f, 10.0f));
-    options->emitters.push_back(PosVector(50.0f, 50.0f));
     options->receivers.push_back(PosVector(47.0F, 65.0F));
     options->receivers.push_back(PosVector(80.0F, 30.0F));
 }
@@ -149,58 +148,60 @@ void drawOptions(RaytracerResult *result, RaytracerOptions *o) {
     ImGui::Begin("Options");  
 
     // Problem Creation
-    ImGui::Text("Create a new Raytracing problem :"); 
-    ImGui::InputInt("Reflections", &ref_option);
-    if(ref_option < 1) ref_option = 1;
-    if(ImGui::Button("Start Simulation"))
-        solveProblem(result, &o->emitters, &o->receivers, ref_option);
-    if(ImGui::Button("Start Complete Simulation")) {
-        static vector<PosVector> emts; emts.clear();
-        PosVector evalZone = (o->evalZ * (float)(o->eval_size));
-        for(float x = o->eval_size / 2; x < evalZone.x; x += o->eval_size)
-            for(float y = o->eval_size / 2; y < evalZone.y; y += o->eval_size)
-                emts.push_back(PosVector(x, y));
-        solveProblem(result, &o->emitters, &emts, ref_option);
+    if(ImGui::CollapsingHeader("Create problem")) { 
+        ImGui::InputInt("Reflections", &ref_option);
+        if(ref_option < 1) ref_option = 1;
+        if(ImGui::Button("Start Simulation"))
+            solveProblem(result, &o->emitters, &o->receivers, ref_option);
+        if(ImGui::Button("Start Complete Simulation")) {
+            static vector<PosVector> emts; emts.clear();
+            PosVector evalZone = (o->evalZ * (float)(o->eval_size));
+            for(float x = o->eval_size / 2; x < evalZone.x; x += o->eval_size)
+                for(float y = o->eval_size / 2; y < evalZone.y; y += o->eval_size)
+                    emts.push_back(PosVector(x, y));
+            solveProblem(result, &o->emitters, &emts, ref_option);
+        }
     }
 
     // Evaluation Zone (ie : Zone where the calculations take place)
-    ImGui::Text("Evaluation Zone");
-    ImGui::Checkbox("Show Zone", &(o->show_evalzone));
-    static int vO[2]; vO[0] = o->evalO.x; vO[1] = o->evalO.y;
-    if(ImGui::InputInt2("Origin", vO)) {
-        o->evalO.x = (float) vO[0];
-        o->evalO.y = (float) vO[1];
+    if((o->show_evalzone = ImGui::CollapsingHeader("Evaluation Zone"))) {
+        static int vO[2]; vO[0] = o->evalO.x; vO[1] = o->evalO.y;
+        if(ImGui::InputInt2("Origin", vO)) {
+            o->evalO.x = (float) vO[0];
+            o->evalO.y = (float) vO[1];
+        }
+        static int vZ[2]; vZ[0] = o->evalZ.x; vZ[1] = o->evalZ.y;
+        if(ImGui::InputInt2("Zone Number", vZ)) {
+            o->evalZ.x = (float) vZ[0];
+            o->evalZ.y = (float) vZ[1];
+        }
+        ImGui::InputInt("Size", &o->eval_size);
     }
-    static int vZ[2]; vZ[0] = o->evalZ.x; vZ[1] = o->evalZ.y;
-    if(ImGui::InputInt2("Zone Number", vZ)) {
-        o->evalZ.x = (float) vZ[0];
-        o->evalZ.y = (float) vZ[1];
-    }
-    ImGui::InputInt("Size", &o->eval_size);
     
     // Already existing simulation options
-    ImGui::Text("Current Simulation");
-    // 1, result->receivers->size()
-    if(ImGui::InputInt("Select Receiver", &receiver_index)) {
-        if(receiver_index < 1) receiver_index = 1;
-        if(receiver_index > result->receivers->size()) receiver_index = result->receivers->size();
+    if(ImGui::CollapsingHeader("Current Simulation")) {
+        if(ImGui::InputInt("Select Receiver", &receiver_index)) {
+            if(receiver_index < 1) receiver_index = 1;
+            if(receiver_index > result->receivers->size()) receiver_index = result->receivers->size();
+        }
+        ImGui::Checkbox("Select Reflection", &(o->selectReflection));
+        if(o->selectReflection)
+            ImGui::SliderInt("Reflections", &(o->nbReflections), 0.0f, result->reflections);    // Edit 1 float using a slider from 0.0f to 1.0f
+        ImGui::Checkbox("Show Debug Points", &(o->show_debug));
+        ImGui::SliderFloat("Origin X", &ORIGINX, 0.0f, 1.0f);
+        ImGui::SliderFloat("Origin Y", &ORIGINY, 0.0f, 1.0f);
+        ImGui::SliderFloat("Scale", &SCALE, 1.0f, 10.0f);
     }
-    ImGui::Checkbox("Select Reflection", &(o->selectReflection));
-    if(o->selectReflection)
-        ImGui::SliderInt("Reflections", &(o->nbReflections), 0.0f, result->reflections);    // Edit 1 float using a slider from 0.0f to 1.0f
-    ImGui::Checkbox("Show Debug Points", &(o->show_debug));
-    ImGui::SliderFloat("Origin X", &ORIGINX, 0.0f, 1.0f);
-    ImGui::SliderFloat("Origin Y", &ORIGINY, 0.0f, 1.0f);
-    ImGui::SliderFloat("Scale", &SCALE, 1.0f, 10.0f);
-
-    ImGui::ColorEdit3("Background color", (float*)&(o->background_color));
-    ImGui::Checkbox("Demo Window", &(o->show_demo));
-    const string s = string_format("%s Wall Editor", (o->show_walleditor ? "Hide" : "Show"));
-    if(ImGui::Button(s.c_str())) o->show_walleditor = !o->show_walleditor;
-    ImGui::SameLine();
-    const string s1 = string_format("%s Raytracer", (o->show_raytracer ? "Hide" : "Show"));
-    if(ImGui::Button(s1.c_str())) o->show_raytracer = !o->show_raytracer;
-
+    
+    if(ImGui::CollapsingHeader("Others")) {
+        ImGui::ColorEdit3("Background color", (float*)&(o->background_color));
+        ImGui::Checkbox("Demo Window", &(o->show_demo));
+        const string s = string_format("%s Wall Editor", (o->show_walleditor ? "Hide" : "Show"));
+        if(ImGui::Button(s.c_str())) o->show_walleditor = !o->show_walleditor;
+        ImGui::SameLine();
+        const string s1 = string_format("%s Raytracer", (o->show_raytracer ? "Hide" : "Show"));
+        if(ImGui::Button(s1.c_str())) o->show_raytracer = !o->show_raytracer;
+    }
     ImGui::End();
 }
 
@@ -209,6 +210,7 @@ static int mat_item = 0;
 void drawWallEditor(RaytracerResult *res, RaytracerOptions *o) {
     auto fw = res->walls->begin();
     auto nb = distance(fw, res->walls->end());
+    ImVec2 sz = ImVec2(-FLT_MIN, 0.0f);
     char **items = (char **) malloc(nb * sizeof(char*));
     int i = 0; 
     for(Wall &w : *res->walls)
@@ -226,9 +228,9 @@ void drawWallEditor(RaytracerResult *res, RaytracerOptions *o) {
         char_format(materials[j], "%s", o->matmap->at(j).name.c_str());  
     ImGui::Combo("##mats", &mat_item, materials, o->mat_number);
     static float v1[2]; 
-    ImGui::InputFloat2("Vector 1", v1);
+    ImGui::InputFloat2("##Vector 1", v1);
     static float v2[2]; 
-    ImGui::InputFloat2("Vector 2", v2);
+    ImGui::InputFloat2("##Vector 2", v2);
 
     if(ImGui::Button("Remove")) res->walls->erase(res->walls->begin() + wall_item);
     ImGui::SameLine();
