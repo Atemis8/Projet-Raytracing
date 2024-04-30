@@ -2,7 +2,9 @@
 #include <unordered_map>
 #include <cstdlib>
 #include <time.h> 
-      
+#include <complex>
+#include <cmath>
+
 #include "main.hpp"
 #include "vector.hpp"
 #include "structs.hpp"
@@ -67,18 +69,19 @@ void solveProblem(RaytracerResult *res, vector<PosVector> *emitters, vector<PosV
 
 
 int main(int argc, char *argv[]) {
-	srand(time(NULL));
-	init_materials();
+	srand(time(NULL)); // Init the random
+	init_materials(); // Init the different materials
 
 	vector<PosVector> emitters;
 	vector<PosVector> receivers;
-	load_problem(&emitters, &matmap);
+	load_problem(&emitters, &matmap); // Loads the problem from the save files
 
 	RaytracerResult result;
 	RaytracerOptions options;
-	setDefaultOptions(&options, &colorMap, &matmap, mat_id, &emitters, &receivers);
-	solveProblem(&result, &options.emitters, &options.receivers, 3);
+	cout << "Starting" << endl;
+	setDefaultOptions(&options, &colorMap, &matmap, mat_id, &emitters, &receivers); // Sets the default options for the calculations
+	solveProblem(&result, &options.emitters, &options.receivers, 2); // Solves the probelm and puts it in the result object
 
-	imgui_test(&result, &options);
+	imgui_test(&result, &options); // Graphical interface for the problem
 	return 0;
 }

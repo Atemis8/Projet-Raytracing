@@ -75,6 +75,8 @@ void setDefaultOptions(RaytracerOptions *options, unordered_map<int, int> *color
         .matmap = matmap, 
         .nbReflections = 0,
         .selectReflection = 1,
+        .select_ray = 0,
+        .selected_ray = 1,
         .show_debug = 0,
         .show_demo = 0,
         .background_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f), 
@@ -89,8 +91,7 @@ void setDefaultOptions(RaytracerOptions *options, unordered_map<int, int> *color
         .receivers = *(receivers)
     };
     options->emitters.push_back(PosVector(32.0f, 10.0f));
-    options->receivers.push_back(PosVector(47.0F, 65.0F));
-    options->receivers.push_back(PosVector(80.0F, 30.0F));
+    options->receivers.push_back(PosVector(5.0F, 5.0F));
 }
 
 //AddPolyline(const ImVec2* points, int num_points, ImU32 col, ImDrawFlags flags, float thickness);
@@ -102,6 +103,7 @@ void drawRay(Ray *r, ImDrawList* draw_list, int nb) {
 }
 
 static int receiver_index = 1;
+static int drawn_rays = 0;
 void drawRaytracer(RaytracerResult *result, RaytracerOptions *o) {
     ImGui::Begin("Raytracer");
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
@@ -114,10 +116,13 @@ void drawRaytracer(RaytracerResult *result, RaytracerOptions *o) {
 
     // Reciever Selection and tracing Rays
     draw_list->AddCircleFilled(setAxis(&((*result->receivers)[receiver_index - 1])), POINT_SCALE, getColor(GREEN));
+    
+    drawn_rays = 0;
     for(Ray &r : (*result->rays)[receiver_index - 1]) {
         int nb = distance(r.points.begin(), r.points.end());
-        if(o->selectReflection && (o->nbReflections + 2 != nb)) continue;
-        drawRay(&r, draw_list, nb);
+        if((o->selectReflection || o->select_ray) && (o->nbReflections + 2 != nb)) continue;
+        if(!o->select_ray || (drawn_rays + 1 == o->selected_ray)) drawRay(&r, draw_list, nb);
+        ++drawn_rays;
     }
     
     // Draw the walls
@@ -142,6 +147,13 @@ void drawRaytracer(RaytracerResult *result, RaytracerOptions *o) {
     ImGui::End();
 }
 
+void InputIntBounds(const char* s, int &i, int min, int max) {
+    if(ImGui::InputInt(s, &i)) {
+        if(i < min) i = min;
+        if(i > max) i = max;
+    }
+}
+
 void drawOptions(RaytracerResult *result, RaytracerOptions *o) {
     static int counter = 0;
     static int ref_option = 1;
@@ -160,6 +172,10 @@ void drawOptions(RaytracerResult *result, RaytracerOptions *o) {
                 for(float y = o->eval_size / 2; y < evalZone.y; y += o->eval_size)
                     emts.push_back(PosVector(x, y));
             solveProblem(result, &o->emitters, &emts, ref_option);
+
+            o->selected_ray = 1;
+            o->nbReflections = 0;
+            receiver_index = 1;
         }
     }
 
@@ -178,15 +194,15 @@ void drawOptions(RaytracerResult *result, RaytracerOptions *o) {
         ImGui::InputInt("Size", &o->eval_size);
     }
     
-    // Already existing simulation options
+    // Simulation options for already existing problem
     if(ImGui::CollapsingHeader("Current Simulation")) {
-        if(ImGui::InputInt("Select Receiver", &receiver_index)) {
-            if(receiver_index < 1) receiver_index = 1;
-            if(receiver_index > result->receivers->size()) receiver_index = result->receivers->size();
-        }
-        ImGui::Checkbox("Select Reflection", &(o->selectReflection));
-        if(o->selectReflection)
-            ImGui::SliderInt("Reflections", &(o->nbReflections), 0.0f, result->reflections);    // Edit 1 float using a slider from 0.0f to 1.0f
+        ImGui::Checkbox("Select Reflection ?", &(o->selectReflection));
+        ImGui::Checkbox("Select Ray ?", &(o->select_ray));
+        InputIntBounds("Select Receiver", receiver_index, 1, result->receivers->size());
+        if(o->selectReflection || o->select_ray)
+            InputIntBounds("Select Reflection", o->nbReflections, 0, result->reflections);
+        if(o->select_ray)
+            InputIntBounds("Select ray", o->selected_ray, 1, drawn_rays);
         ImGui::Checkbox("Show Debug Points", &(o->show_debug));
         ImGui::SliderFloat("Origin X", &ORIGINX, 0.0f, 1.0f);
         ImGui::SliderFloat("Origin Y", &ORIGINY, 0.0f, 1.0f);

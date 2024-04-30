@@ -7,7 +7,7 @@
 
 using namespace std;
 
-static string filepath = "saves/walls_final.dat";
+static string filepath = "saves/walls_test.dat";
 
 void save_problem(vector<Wall> *walls, vector<PosVector> *emitters) {
     if(mkdir("saves", 0777) == -1) cout << "No need to create directory" << endl;

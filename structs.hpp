@@ -53,8 +53,13 @@ struct RaytracerResult {
 struct RaytracerOptions {
     unordered_map<int, int> *colors;
     unordered_map<int, Material> *matmap;
+    
     int nbReflections;
     bool selectReflection;
+
+    int selected_ray;
+    bool select_ray;
+
     bool show_debug;
     bool show_demo;
     ImVec4 background_color;
