@@ -20,8 +20,22 @@ static unordered_map<int, Material> matmap;
 static unordered_map<int, int> colorMap;
 static complex<float> mu0 = complex<float>(MU0, 0);
 Material material(string name, float epsr, float cond, float thck, int color) {
-	complex<float> perm = complex<float>(epsr * EPSILON0, -cond / (FREQ * 2 * PI));
-	const Material m = {.id = mat_id, .epsr = epsr, .cond=cond, .thck=thck, .perm=perm, .imped=sqrt(mu0 / perm), .name = name};
+	float omega = 2 * PI * FREQ;
+	float eps = epsr * EPSILON0;
+	float coef1 = omega * sqrt(MU0 * eps / 2);
+	float coef2 = sqrt(1 + (cond / omega / eps) * (cond / omega / eps));
+
+	complex<float> perm = complex<float>(eps, -cond / omega);
+	const Material m = {
+		.id = mat_id, 
+		.sepsr = sqrt(epsr),
+		.cond=cond, 
+		.thck=thck, 
+		.perm=perm, 
+		.imped=sqrt(mu0 / perm), 
+		.name = name,
+		.gammam = complex<float>(coef1 * sqrt(coef2 - 1), coef1 * sqrt(coef2 + 1))
+	};
     matmap[mat_id] = m; 
 	colorMap[mat_id] = color;
 	++mat_id;
@@ -75,6 +89,11 @@ int main(int argc, char *argv[]) {
 	vector<PosVector> emitters;
 	vector<PosVector> receivers;
 	load_problem(&emitters, &matmap); // Loads the problem from the save files
+
+	PosVector d = PosVector(79, -85);
+	cout << transCoef(walls[2], d) << endl;
+
+	return 0;
 
 	RaytracerResult result;
 	RaytracerOptions options;

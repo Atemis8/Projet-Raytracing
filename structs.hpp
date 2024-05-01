@@ -10,20 +10,23 @@
 #define PI 3.1415926535897932f
 #define MU0 (PI * 4E-7)
 #define EPSILON0 8.85418782E-12
-#define Z0 376.730313668
+#define Z0 376.730313668f
+#define C 3E8
+#define BETA (2 * PI * FREQ / C)
 
 #ifndef utilitystructs
 
 using namespace std;
 
 struct Material {
-    float epsr;
+    float sepsr;
     float cond;
     float thck;
     int id;
     string name;
     complex<float> perm;
     complex<float> imped;
+    complex<float> gammam;
 };
 
 struct Wall {

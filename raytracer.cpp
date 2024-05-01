@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <cmath>
+#include <complex>
 
 #define MINCOLOR 0x000000FF
 
@@ -12,17 +13,91 @@ PosVector getImage(Wall *w,  PosVector *emitter) {
     return PosVector(w->n.x *  prod + emitter->x, w->n.y * prod + emitter->y);
 }
 
-complex<float> transCoef(Wall &w, PosVector &d, float gamma) {
-    complex<float> rc = reflCoef(w, d);
-    complex<float> rcs = rc * rc;
+complex<float> transCoef(Wall &w, PosVector &d) {
+    float normd = sqrt(d.getNorm());
+    float prod = (d * w.v) / w.size; prod *= prod;
+    float cost = sqrt(1 - prod / ((w.mat.sepsr * normd) * (w.mat.sepsr * normd)));
+    float s = -2 * w.mat.thck / cost;
 
-    return rc;
+    complex<float> ratio = w.mat.imped * (float) ((d * w.n) / (normd * cost));
+    complex<float> coefp = (ratio - Z0) / (ratio + Z0); coefp *= coefp;
+    complex<float> args = complex<float>(w.mat.gammam.real() * s, s * (w.mat.gammam.imag() - BETA * prod / (normd * normd * w.mat.sepsr)));
+    complex<float> coef = exp(args);
+    complex<float> out = ((1.0f - coefp) * exp(s / 2 * w.mat.gammam)) / (1.0f - coefp * coef);
+
+    return out;
 }
 
 complex<float> reflCoef(Wall &w, PosVector &d) {
-    float prod = d * w.v;
-    complex<float> ratio = w.mat.imped * (float) ((d * w.n) / (Z0 * sqrt(d.getNorm() - prod * prod / (w.mat.epsr * w.size * w.size))));
-    return ((ratio - 1.0f) / (ratio + 1.0f));
+    float normd = sqrt(d.getNorm());
+    float prod = (d * w.v) / w.size; prod *= prod;
+    float cost = sqrt(1 - prod / ((w.mat.sepsr * normd) * (w.mat.sepsr * normd)));
+    float s = -2 * w.mat.thck / cost;
+
+    complex<float> ratio = w.mat.imped * (float) ((d * w.n) / (normd * cost));
+    complex<float> coefp = (ratio - Z0) / (ratio + Z0);
+    complex<float> args = complex<float>(w.mat.gammam.real() * s, s * (w.mat.gammam.imag() - BETA * prod / (normd * normd * w.mat.sepsr)));
+    complex<float> coef = exp(args);
+    complex<float> out = (coefp - (1.0f - coefp * coefp) * (coefp * coef) / (1.0f - coefp * coefp * coef));
+    
+    return out;
+}
+
+complex<float> reflCoefDet(Wall &w, PosVector &d) {
+    clock_t t1 = clock();
+    float nomd = sqrt(d.getNorm());
+    float nomv = sqrt(w.v.getNorm());
+    float cosi = abs(d * w.n) / nomd;
+    float sini = abs(d * w.v) / nomd / nomv;
+    float sint = sqrt(1 / (w.mat.sepsr * w.mat.sepsr)) * sini;
+    float cost = sqrt(1 - sint * sint);
+    float s = w.mat.thck / cost;
+
+    // cout << "Detailed Reflection Coefficient : " << endl;
+
+    // cout << "Sin i = " << sini << endl;
+    // cout << "Cos i = " << cosi << endl;
+    // cout << "Sin t = " << sint << endl;
+    // cout << "Cos t = " << cost << endl;
+    // cout << "s = " << s << endl;
+
+    complex<float> ratio = w.mat.imped * cosi / (float) (Z0 * cost);
+    complex<float> perrc = (ratio - 1.0f) / (ratio + 1.0f);
+
+    // cout << "coefp = " << perrc << endl;
+    complex<float> coef1 = exp(- 2 * s * w.mat.gammam);
+    complex<float> coef2 = polar(1.0f, (float) (2.0f * BETA * s * sint * sini));
+    complex<float> out = perrc - (1.0f - perrc * perrc) * (perrc * coef1 * coef2) / (1.0f - perrc * perrc * coef1 * coef2);
+    clock_t t2 = clock();
+    cout << "Time : " << t2 - t1 << endl;
+    return out;
+}
+
+complex<float> transCoefDet(Wall &w, PosVector &d) {
+    float nomd = sqrt(d.getNorm());
+    float nomv = sqrt(w.v.getNorm());
+    float cosi = abs(d * w.n) / nomd;
+    float sini = abs(d * w.v) / nomd / nomv;
+    float sint = sqrt(1 / (w.mat.sepsr * w.mat.sepsr)) * sini;
+    float cost = sqrt(1 - sint * sint);
+    float s = w.mat.thck / cost;
+
+    cout << "Detailed Transmission Coefficient : " << endl;
+
+    cout << "Sin i = " << sini << endl;
+    cout << "Cos i = " << cosi << endl;
+    cout << "Sin t = " << sint << endl;
+    cout << "Cos t = " << cost << endl;
+    cout << "s = " << s << endl;
+
+    complex<float> ratio = w.mat.imped * cosi / (float) (Z0 * cost);
+    complex<float> perrc = (ratio - 1.0f) / (ratio + 1.0f);
+
+    cout << "coefp = " << perrc << endl;
+    complex<float> coef1 = exp(- 2 * s * w.mat.gammam);
+    complex<float> coef2 = polar(1.0f, (float) (4.0f * PI * FREQ / C * s * sint * sini));
+    
+    return (1.0f - perrc * perrc) * exp(- s * w.mat.gammam) / (1.0f - perrc * perrc * coef1 * coef2);
 }
 
 bool intersection(PosVector *out, PosVector *rx, PosVector *tx, Wall *w) {
@@ -35,8 +110,6 @@ bool intersection(PosVector *out, PosVector *rx, PosVector *tx, Wall *w) {
    
     if(t < 0 || t > 1 || t != t) return 1;
     *(out) = PosVector(w->v1.x + t * w->v.x, w->v1.y + t * w->v.y);
-
-    cout << "RX : " << *rx << ", TX : " << *tx << ", OUT : " << *out << ", t : " << t << endl;
     return 0;
 }
 
